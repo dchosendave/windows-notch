@@ -2,6 +2,8 @@
 
 Hamin is a lightweight, customizable notch and taskbar companion for Windows 11. It is built with Tauri, Rust, React, and TypeScript.
 
+Complete product, usage, architecture, privacy, testing, and development documentation is available in [docs/](docs/README.md).
+
 ## Features
 
 - Native Windows media sessions with player selection, artwork, playback controls, seeking, wheel volume, and middle-click play/pause

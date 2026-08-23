@@ -5,6 +5,7 @@ import type { QuickAction } from "@/features/tasks/use-quick-actions";
 export type ResizeNotchRequest = { width: number; height: number; durationMs: number; floatingOffset: number; motionStyle: string };
 export type PlacementRequest = { monitor: number; horizontalOffset: number; topOffset: number };
 export type ProcessMetrics = { memoryMb: number; uptimeSeconds: number };
+export type ForegroundContext = { title: string; processName: string; processId: number; category: "development" | "browser" | "meeting" | "media" | "files" | "application" };
 
 export const nativeClient = {
   resizeNotch: (request: ResizeNotchRequest) => invoke<void>("animate_notch_size", request),
@@ -12,8 +13,11 @@ export const nativeClient = {
   setPlacement: (request: PlacementRequest) => invoke<void>("set_notch_placement", request),
   setTaskbarReplacement: (enabled: boolean) => invoke<void>("set_taskbar_replacement", { enabled }),
   getProcessMetrics: () => invoke<ProcessMetrics>("get_process_metrics"),
+  getForegroundContext: () => invoke<ForegroundContext>("get_foreground_context"),
   getPowerState: () => invoke<unknown>("get_power_state"),
   launchQuickAction: (action: QuickAction) => invoke<void>("launch_quick_action", { action }),
+  launchCustomTarget: (target: string) => invoke<void>("launch_custom_target", { target }),
+  revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   getAudioState: () => invoke<unknown>("get_audio_state"),
   setMasterVolume: (volume: number) => invoke<unknown>("set_master_volume", { volume: Math.round(volume) }),
   toggleMasterMute: () => invoke<unknown>("toggle_master_mute"),

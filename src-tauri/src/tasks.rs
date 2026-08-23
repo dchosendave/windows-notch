@@ -21,6 +21,7 @@ pub fn launch_quick_action(action: &str) -> Result<(), String> {
         "sound" => ("ms-settings:sound", None),
         "microphonePrivacy" => ("ms-settings:privacy-microphone", None),
         "cameraPrivacy" => ("ms-settings:privacy-webcam", None),
+        "calendar" => ("outlookcal:", None),
         _ => return Err("Unknown quick action".into()),
     };
 
@@ -47,6 +48,75 @@ pub fn launch_quick_action(action: &str) -> Result<(), String> {
             "Windows could not launch that action ({})",
             result.0 as isize
         ));
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+#[tauri::command]
+pub fn launch_custom_target(target: &str) -> Result<(), String> {
+    use std::path::Path;
+    use windows::{
+        core::PCWSTR,
+        Win32::{
+            Foundation::HWND,
+            UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL},
+        },
+    };
+    let allowed_uri = target.starts_with("https://")
+        || target.starts_with("http://")
+        || target.starts_with("ms-settings:");
+    let allowed_path = Path::new(target).is_absolute() && Path::new(target).exists();
+    if !allowed_uri && !allowed_path {
+        return Err("Custom actions must be an http(s) URL, Windows Settings URI, or existing absolute path".into());
+    }
+    let operation = wide("open");
+    let target = wide(target);
+    let result = unsafe {
+        ShellExecuteW(
+            Some(HWND::default()),
+            PCWSTR(operation.as_ptr()),
+            PCWSTR(target.as_ptr()),
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    if result.0 as isize <= 32 {
+        return Err("Windows could not open that custom action".into());
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+#[tauri::command]
+pub fn reveal_file(path: &str) -> Result<(), String> {
+    use std::path::Path;
+    use windows::{
+        core::PCWSTR,
+        Win32::{
+            Foundation::HWND,
+            UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL},
+        },
+    };
+    if !Path::new(path).is_absolute() {
+        return Err("File shelf path is invalid".into());
+    }
+    let operation = wide("open");
+    let explorer = wide("explorer.exe");
+    let arguments = wide(&format!("/select,\"{path}\""));
+    let result = unsafe {
+        ShellExecuteW(
+            Some(HWND::default()),
+            PCWSTR(operation.as_ptr()),
+            PCWSTR(explorer.as_ptr()),
+            PCWSTR(arguments.as_ptr()),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    if result.0 as isize <= 32 {
+        return Err("Windows could not reveal that file".into());
     }
     Ok(())
 }

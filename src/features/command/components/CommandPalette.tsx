@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, AppWindow, ChevronLeft, Clipboard, Copy, File, FileText, Search, Timer, Trash2, Volume2 } from "lucide-react";
+import { Activity, AppWindow, ChevronLeft, Clipboard, Copy, ExternalLink, File, FileText, Search, Timer, Trash2, Volume2 } from "lucide-react";
 
 export type HaminCommand = {
   id: string;
@@ -17,12 +17,14 @@ const icons = {
   diagnostics: Activity,
 };
 
-export function CommandPalette({ commands, note, clipboardHistory, shelfFiles, onClearShelf, onBack, onNoteChange, onPasteCapture, onCopyHistory }: {
+export function CommandPalette({ commands, note, clipboardHistory, shelfFiles, onClearShelf, onRevealFile, onCopyFile, onBack, onNoteChange, onPasteCapture, onCopyHistory }: {
   commands: HaminCommand[];
   note: string;
   clipboardHistory: string[];
   shelfFiles: string[];
   onClearShelf: () => void;
+  onRevealFile: (path: string) => void;
+  onCopyFile: (path: string) => void;
   onBack: () => void;
   onNoteChange: (note: string) => void;
   onPasteCapture: () => void;
@@ -46,7 +48,7 @@ export function CommandPalette({ commands, note, clipboardHistory, shelfFiles, o
       {!query && <aside className="command-side">
         <label className="quick-note"><span><FileText size={13} /> Quick note</span><textarea maxLength={500} value={noteDraft} placeholder="Keep a small note…" onChange={(event) => setNoteDraft(event.target.value)} onBlur={() => onNoteChange(noteDraft)} /></label>
         <div className="clipboard-panel"><header><span><Clipboard size={13} /> Clipboard</span><button onClick={onPasteCapture}>Capture</button></header>{clipboardHistory.slice(0, 3).map((item, index) => <button key={`${index}-${item}`} title={item} onClick={() => onCopyHistory(item)}><Copy size={11} /><span>{item}</span></button>)}</div>
-        <div className="file-shelf"><header><span><File size={13} /> File shelf</span>{shelfFiles.length > 0 && <button aria-label="Clear file shelf" title="Clear shelf" onClick={onClearShelf}><Trash2 size={12} /></button>}</header>{shelfFiles.length === 0 ? <small>Drop files onto Hamin to hold them here</small> : shelfFiles.slice(0, 4).map((path) => <div key={path} title={path}><File size={11} /><span>{path.split(/[\\/]/).pop()}</span></div>)}</div>
+        <div className="file-shelf"><header><span><File size={13} /> File shelf</span>{shelfFiles.length > 0 && <button aria-label="Clear file shelf" title="Clear shelf" onClick={onClearShelf}><Trash2 size={12} /></button>}</header>{shelfFiles.length === 0 ? <small>Drop files onto Hamin to hold them here</small> : shelfFiles.slice(0, 4).map((path) => <div key={path} title={path}><File size={11} /><span>{path.split(/[\\/]/).pop()}</span><button aria-label="Copy path" onClick={() => onCopyFile(path)}><Copy size={10} /></button><button aria-label="Reveal in Explorer" onClick={() => onRevealFile(path)}><ExternalLink size={10} /></button></div>)}</div>
       </aside>}
     </div>
   </div>;

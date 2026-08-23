@@ -12,7 +12,8 @@ export const COLLAPSED_SIZES: Record<HaminSettings["density"], { minimal: NotchS
 export const VIEW_SIZES: Record<NotchMode, NotchSize> = {
   idle: { width: 460, height: 196 },
   media: { width: 460, height: 196 },
-  system: { width: 460, height: 270 },
+  companion: { width: 500, height: 340 },
+  system: { width: 460, height: 300 },
   productivity: { width: 460, height: 220 },
   command: { width: 500, height: 320 },
   settings: { width: 520, height: 360 },

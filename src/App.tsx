@@ -3,6 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 
 import { CommandPalette, type HaminCommand } from "@/features/command/components/CommandPalette";
+import { CompanionView } from "@/features/companion/components/CompanionView";
+import { useForegroundContext } from "@/features/companion/use-foreground-context";
 import { useFileShelf } from "@/features/command/use-file-shelf";
 import { useMediaSession } from "@/features/media/use-media-session";
 import { useArtworkAccent } from "@/features/media/use-artwork-accent";
@@ -16,6 +18,7 @@ import { useCompanionEvents } from "@/features/notch/use-companion-events";
 import { useNativeNotchWindow } from "@/features/notch/use-native-notch-window";
 import { usePowerState } from "@/features/power/use-power-state";
 import { FocusTimerView } from "@/features/productivity/components/FocusTimerView";
+import { OnboardingView } from "@/features/onboarding/OnboardingView";
 import { useFocusTimer } from "@/features/productivity/use-focus-timer";
 import type { MonitorSummary } from "@/features/settings/components/SettingsView";
 import type { HaminSettings } from "@/features/settings/settings-schema";
@@ -28,11 +31,13 @@ import { useQuickActions, type QuickAction } from "@/features/tasks/use-quick-ac
 import { useMinuteClock } from "@/shared/hooks/use-minute-clock";
 import { useTransientActivity, type CapsuleCategory } from "@/shared/hooks/use-transient-activity";
 import { HAMIN_ERROR_EVENT, type AppError } from "@/shared/lib/report-error";
-import { nativeClient } from "@/shared/native/native-client";
+import { viewVariants } from "@/shared/motion/tokens";
+import { nativeClient, type ProcessMetrics } from "@/shared/native/native-client";
 import "./App.css";
 
 type ExpansionReason = "click" | "hover";
 const SettingsView = lazy(() => import("@/features/settings/components/SettingsView").then((module) => ({ default: module.SettingsView })));
+const MODE_ORDER: Record<NotchMode, number> = { idle: 0, media: 0, companion: 1, productivity: 2, system: 3, command: 4, settings: 5 };
 
 function clearTimer(timer: { current: number | undefined }) {
   if (timer.current !== undefined) {
@@ -65,14 +70,16 @@ function App() {
   const quickActions = useQuickActions();
   const audio = useAudio();
   const livePosition = useLivePosition(media.session);
-  const { activity, capsule, announce, announceSequence, setEnabledCategories, setMinimumPriority } = useTransientActivity();
+  const { activity, capsule, history, dismissHistory, clearHistory, announce, announceSequence, setEnabledCategories, setMinimumPriority } = useTransientActivity();
   const [monitors, setMonitors] = useState<MonitorSummary[]>([]);
+  const [metrics, setMetrics] = useState<ProcessMetrics | null>(null);
   const [seekPreview, setSeekPreview] = useState<number | null>(null);
   const notchWindow = useNativeNotchWindow();
   const inactivityTimer = useRef<number | undefined>(undefined);
   const selectOpen = useRef(false);
   const pointerInside = useRef(false);
   const collapsedActivity = useRef(false);
+  const previousMode = useRef(mode);
 
   const resizeNative = notchWindow.resize;
 
@@ -104,7 +111,8 @@ function App() {
   }, [expand, setMode]);
   const { settings, ready: settingsReady, error: settingsError, updateSetting } = useSettings(handleGlobalShortcut);
   const handleFileDrop = useCallback((count: number) => announce(`${count} ${count === 1 ? "file" : "files"} on shelf`, 3_000, { category: "device", priority: "normal" }), [announce]);
-  const fileShelf = useFileShelf(handleFileDrop);
+  const fileShelf = useFileShelf(handleFileDrop, settings.fileShelfPersistence);
+  const foreground = useForegroundContext(expanded && mode === "companion");
   useEffect(() => {
     const categories = (Object.entries(settings.capsuleCategories) as Array<[CapsuleCategory, boolean]>).filter(([, enabled]) => enabled).map(([category]) => category);
     setEnabledCategories(categories);
@@ -122,12 +130,14 @@ function App() {
   collapsedActivity.current = hasCollapsedActivity;
   const collapsedSize = COLLAPSED_SIZES[settings.density][hasCollapsedActivity ? "activity" : "minimal"];
   const attached = phase === "attached" || (phase === "interaction-locked" && resumePhase === "attached");
+  const onboarding = settingsReady && !settings.onboardingComplete;
+  const expandedSize = onboarding ? { width: 460, height: 280 } : VIEW_SIZES[mode];
 
   useEffect(() => {
     if (expanded) {
-      resizeNative(VIEW_SIZES[mode], attached ? 0 : settings.floatingOffset);
+      resizeNative(expandedSize, attached ? 0 : settings.floatingOffset);
     }
-  }, [attached, expanded, mode, resizeNative, settings.floatingOffset]);
+  }, [attached, expanded, expandedSize.height, expandedSize.width, resizeNative, settings.floatingOffset]);
 
   useEffect(() => {
     if (!expanded) resizeNative(collapsedSize, settings.floatingOffset);
@@ -178,6 +188,8 @@ function App() {
   };
   const openSystem = () => { openView("system"); void audio.refresh(); };
   const openCommand = () => openView("command");
+  const refreshMetrics = () => void nativeClient.getProcessMetrics().then(setMetrics).catch((error) => announce(String(error)));
+  const openCompanion = () => { openView("companion"); refreshMetrics(); };
   const closeUtilityView = () => setMode(media.session ? "media" : "idle");
 
   const startTimer = (minutes: number) => {
@@ -206,6 +218,7 @@ function App() {
       if (!text) return announce("Clipboard is empty");
       const history = [text, ...settings.clipboardHistory.filter((item) => item !== text)].slice(0, 8);
       await updateSetting("clipboardHistory", history);
+      await updateSetting("clipboardCapturedAt", Date.now());
       announce("Clipboard captured", 1_800, { category: "clipboard" });
     } catch { announce("Clipboard access needs a click permission", 2_400, { category: "clipboard" }); }
   };
@@ -223,6 +236,7 @@ function App() {
     { id: "explorer", label: "Open File Explorer", description: "Launch Windows File Explorer", icon: "windows", run: () => void launchQuickAction("explorer") },
     { id: "settings", label: "Open Windows Settings", description: "Launch the Windows Settings app", icon: "windows", run: () => void launchQuickAction("settings") },
     { id: "performance", label: "Hamin performance", description: "Show current memory use and uptime", icon: "diagnostics", run: () => void nativeClient.getProcessMetrics().then((metrics) => announce(`${metrics.memoryMb.toFixed(1)} MB · ${Math.floor(metrics.uptimeSeconds / 60)} min uptime`)).catch((error) => announce(String(error))) },
+    ...settings.customActions.map((action) => ({ id: `custom-${action.id}`, label: action.label, description: action.target, icon: "windows" as const, run: () => void nativeClient.launchCustomTarget(action.target).then(collapse).catch((error) => announce(String(error))) })),
   ];
 
   useEffect(() => {
@@ -264,8 +278,23 @@ function App() {
   const timelineStyle = { "--timeline-progress": `${progress}%` } as CSSProperties;
   const accentColors = { blue: "106, 156, 255", violet: "173, 130, 255", emerald: "76, 201, 154", artwork: artworkAccent } as const;
   const themeStyle = { "--accent-rgb": accentColors[settings.accent], "--surface-opacity": settings.surfaceOpacity, "--notch-radius": `${settings.cornerRadius}px` } as CSSProperties;
-  const targetSize = expanded ? VIEW_SIZES[mode] : collapsedSize;
+  const targetSize = expanded ? expandedSize : collapsedSize;
   const motionProfile = getMotionProfile(settings);
+  const viewDirection = MODE_ORDER[mode] >= MODE_ORDER[previousMode.current] ? 1 : -1;
+
+  useEffect(() => { previousMode.current = mode; }, [mode]);
+
+  useEffect(() => {
+    if (onboarding && !expanded) expand("click");
+  }, [expand, expanded, onboarding]);
+
+  useEffect(() => {
+    if (!settings.clipboardHistory.length || !settings.clipboardExpiryMinutes || !settings.clipboardCapturedAt) return;
+    const remaining = settings.clipboardCapturedAt + settings.clipboardExpiryMinutes * 60_000 - Date.now();
+    if (remaining <= 0) { void updateSetting("clipboardHistory", []); return; }
+    const timer = window.setTimeout(() => void updateSetting("clipboardHistory", []), remaining);
+    return () => window.clearTimeout(timer);
+  }, [settings.clipboardCapturedAt, settings.clipboardExpiryMinutes, settings.clipboardHistory.length, updateSetting]);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--accent-rgb", accentColors[settings.accent]);
@@ -274,7 +303,7 @@ function App() {
 
   return (
     <MotionConfig reducedMotion={settings.animations && settings.motionStyle !== "instant" ? "user" : "always"}>
-      <main className="notch-stage" data-animations={settings.animations && settings.motionStyle !== "instant"} data-density={settings.density} data-operating-mode={settings.operatingMode} data-surface={settings.surfaceStyle} style={{ ...themeStyle, "--motion-content-duration": `${motionProfile.contentDuration}s` } as CSSProperties}>
+      <main className="notch-stage" data-file-dragging={fileShelf.dragging} data-animations={settings.animations && settings.motionStyle !== "instant"} data-density={settings.density} data-operating-mode={settings.operatingMode} data-surface={settings.surfaceStyle} style={{ ...themeStyle, "--motion-content-duration": `${motionProfile.contentDuration}s` } as CSSProperties}>
         <span className="sr-only" role="status" aria-live="polite">{activity ?? ""}</span>
         <motion.section
           aria-label="Hamin notch"
@@ -317,19 +346,20 @@ function App() {
         >
           <AnimatePresence initial={false} mode="sync">
             {expanded ? (
-              <motion.div key="expanded" layout="position" className="expanded-content" initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.99 }} transition={{ duration: motionProfile.contentDuration, delay: motionProfile.duration ? 0.025 : 0 }}>
-                <AnimatePresence initial={false} mode="popLayout">
-                  <motion.div key={mode} className="view-motion-shell" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: motionProfile.contentDuration }}>
+              <motion.div key="expanded" className="expanded-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: motionProfile.contentDuration }}>
+                {onboarding ? <OnboardingView onFinish={() => void updateSetting("onboardingComplete", true)} /> : <AnimatePresence initial={false} mode="popLayout" custom={viewDirection}>
+                  <motion.div key={mode} custom={viewDirection} variants={viewVariants} initial="enter" animate="center" exit="exit" className="view-motion-shell" transition={{ duration: motionProfile.contentDuration }}>
                 {mode === "settings" && <Suspense fallback={<div className="view-loading">Loading settings…</div>}><SettingsView settings={settings} ready={settingsReady} error={settingsError} monitors={monitors} onBack={closeUtilityView} onCollapse={collapse} onChange={changeSetting} /></Suspense>}
-                {mode === "command" && <CommandPalette commands={commands} note={settings.quickNote} clipboardHistory={settings.clipboardHistoryEnabled ? settings.clipboardHistory : []} shelfFiles={fileShelf.files} onClearShelf={fileShelf.clear} onBack={closeUtilityView} onNoteChange={(note) => changeSetting("quickNote", note)} onPasteCapture={() => void captureClipboard()} onCopyHistory={(value) => void copyHistory(value)} />}
+                {mode === "command" && <CommandPalette commands={commands} note={settings.quickNote} clipboardHistory={settings.clipboardHistoryEnabled ? settings.clipboardHistory : []} shelfFiles={fileShelf.files} onClearShelf={fileShelf.clear} onRevealFile={(path) => void nativeClient.revealFile(path).catch((error) => announce(String(error)))} onCopyFile={(path) => void navigator.clipboard.writeText(path).then(() => announce("Path copied"))} onBack={closeUtilityView} onNoteChange={(note) => changeSetting("quickNote", note)} onPasteCapture={() => void captureClipboard()} onCopyHistory={(value) => void copyHistory(value)} />}
+                {mode === "companion" && <CompanionView context={foreground.context} history={settings.notificationInbox ? history : []} metrics={metrics} onBack={closeUtilityView} onCollapse={collapse} onRefreshContext={() => void foreground.refresh()} onRefreshMetrics={refreshMetrics} onDismiss={dismissHistory} onClear={clearHistory} onOpenPrivacy={() => void launchQuickAction("microphonePrivacy")} onOpenCalendar={() => void launchQuickAction("calendar")} />}
                 {mode === "system" && <SystemControlsView volume={audio.state.volume} muted={audio.state.muted} deviceName={audio.state.deviceName} deviceCount={audio.state.deviceCount} loading={audio.loading} error={audio.error} onBack={closeUtilityView} onRefresh={() => void audio.refresh()} onToggleMute={() => void toggleMute()} onVolumeChange={(volume) => void changeVolume(volume)} onLaunch={(action) => void launchQuickAction(action)} />}
-                {mode === "productivity" && <FocusTimerView now={now} timerEndsAt={focusTimer.endsAt} remaining={focusTimer.remaining} onBack={closeUtilityView} onCollapse={collapse} onStart={startTimer} onStop={stopTimer} />}
-                {(mode === "idle" || mode === "media") && <DashboardView session={media.session} sessions={media.sessions} loading={media.loading} power={power} now={now} displayedPosition={displayedPosition} timelineStyle={timelineStyle} onSeekPreview={setSeekPreview} onCommitSeek={(value) => void commitSeek(value)} onControl={(action) => void media.control(action)} onSelectSession={(sourceAppId) => void media.selectSession(sourceAppId)} onOpenProductivity={() => openView("productivity")} onOpenSystem={openSystem} onOpenSettings={openSettings} onOpenCommand={openCommand} onCollapse={collapse} />}
+                {mode === "productivity" && <FocusTimerView now={now} timerEndsAt={focusTimer.endsAt} remaining={focusTimer.remaining} duration={focusTimer.duration} presets={settings.focusPresets} completedThisWeek={focusTimer.completedThisWeek} onBack={closeUtilityView} onCollapse={collapse} onStart={startTimer} onStop={stopTimer} />}
+                {(mode === "idle" || mode === "media") && <DashboardView session={media.session} sessions={media.sessions} loading={media.loading} power={power} now={now} displayedPosition={displayedPosition} timelineStyle={timelineStyle} onSeekPreview={setSeekPreview} onCommitSeek={(value) => void commitSeek(value)} onControl={(action) => void media.control(action)} onSelectSession={(sourceAppId) => void media.selectSession(sourceAppId)} onOpenCompanion={openCompanion} onOpenProductivity={() => openView("productivity")} onOpenSystem={openSystem} onOpenSettings={openSettings} onOpenCommand={openCommand} onCollapse={collapse} />}
                   </motion.div>
-                </AnimatePresence>
+                </AnimatePresence>}
               </motion.div>
             ) : (
-              <CollapsedNotch session={media.session} loading={media.loading} power={power} now={now} activity={activity} capsuleCategory={capsule?.category} timerEndsAt={focusTimer.endsAt} timerRemaining={focusTimer.remaining} audioLevels={audioLevels} layout={settings.collapsedLayout} onExpand={() => expand("click")} />
+              <CollapsedNotch session={media.session} loading={media.loading} power={power} now={now} activity={activity} capsuleCategory={capsule?.category} capsulePriority={capsule?.priority} timerEndsAt={focusTimer.endsAt} timerRemaining={focusTimer.remaining} audioLevels={audioLevels} layout={settings.collapsedLayout} onExpand={() => expand("click")} />
             )}
           </AnimatePresence>
         </motion.section>

@@ -2,14 +2,22 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportOperationalError } from "@/shared/lib/report-error";
 
-export function useFileShelf(onDrop: (count: number) => void) {
-  const [files, setFiles] = useState<string[]>([]);
+const FILE_SHELF_KEY = "hamin.file-shelf";
+
+export function useFileShelf(onDrop: (count: number) => void, persistent = false) {
+  const [files, setFiles] = useState<string[]>(() => {
+    try { return JSON.parse(window.localStorage.getItem(FILE_SHELF_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
     void getCurrentWindow().onDragDropEvent((event) => {
+      if (event.payload.type === "enter") { setDragging(true); return; }
+      if (event.payload.type === "leave") { setDragging(false); return; }
       if (event.payload.type !== "drop") return;
+      setDragging(false);
       const paths = event.payload.paths.slice(0, 8);
       setFiles(paths);
       onDrop(paths.length);
@@ -20,5 +28,10 @@ export function useFileShelf(onDrop: (count: number) => void) {
     return () => { disposed = true; unlisten?.(); };
   }, [onDrop]);
 
-  return { files, clear: () => setFiles([]) };
+  useEffect(() => {
+    if (persistent) window.localStorage.setItem(FILE_SHELF_KEY, JSON.stringify(files));
+    else window.localStorage.removeItem(FILE_SHELF_KEY);
+  }, [files, persistent]);
+
+  return { files, dragging, clear: () => setFiles([]) };
 }

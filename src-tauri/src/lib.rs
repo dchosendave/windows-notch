@@ -1,6 +1,7 @@
 mod audio;
 mod audio_visualizer;
 mod com;
+mod context;
 mod diagnostics;
 mod error;
 mod media;
@@ -74,7 +75,10 @@ pub fn run() {
             audio_visualizer::start_audio_visualizer,
             audio_visualizer::stop_audio_visualizer,
             diagnostics::get_process_metrics,
-            taskbar::set_taskbar_replacement
+            context::get_foreground_context,
+            taskbar::set_taskbar_replacement,
+            tasks::launch_custom_target,
+            tasks::reveal_file
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

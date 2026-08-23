@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type NotchMode = "idle" | "media" | "system" | "productivity" | "command" | "settings";
+export type NotchMode = "idle" | "media" | "companion" | "system" | "productivity" | "command" | "settings";
 export type NotchPhase = "collapsed" | "hover-preview" | "attached" | "temporary" | "interaction-locked";
 
 type NotchStore = {

@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CapsuleCategory = "general" | "media" | "audio" | "power" | "network" | "timer" | "clipboard" | "privacy" | "device";
 export type CapsulePriority = "low" | "normal" | "high";
-export type Capsule = { id: number; message: string; detail?: string; category: CapsuleCategory; priority: CapsulePriority; duration: number; rateKey?: string; group?: string };
+export type Capsule = { id: number; message: string; detail?: string; category: CapsuleCategory; priority: CapsulePriority; duration: number; rateKey?: string; group?: string; occurredAt: number };
 export type Announce = (message: string, duration?: number, options?: Partial<Pick<Capsule, "category" | "priority" | "detail" | "rateKey" | "group">>) => void;
 export type AnnounceSequence = (items: Array<{ message: string; duration: number }>, options?: Partial<Pick<Capsule, "category" | "priority" | "group">>) => void;
 const priorityRank = { low: 0, normal: 1, high: 2 } as const;
 
 export function useTransientActivity() {
   const [capsule, setCapsule] = useState<Capsule | null>(null);
+  const [history, setHistory] = useState<Capsule[]>([]);
   const current = useRef<Capsule | null>(null);
   const queue = useRef<Capsule[]>([]);
   const timer = useRef<number | undefined>(undefined);
@@ -23,11 +24,12 @@ export function useTransientActivity() {
     current.current = next;
     setCapsule(next);
     if (!next) return;
+    setHistory((items) => [next, ...items.filter((item) => item.id !== next.id)].slice(0, 30));
     timer.current = window.setTimeout(() => showRef.current(queue.current.shift() ?? null), next.duration);
   }, []);
   showRef.current = show;
 
-  const push = useCallback((input: Omit<Capsule, "id"> & { replaceGroup?: boolean }) => {
+  const push = useCallback((input: Omit<Capsule, "id" | "occurredAt"> & { replaceGroup?: boolean }) => {
     if (enabled.current && !enabled.current.has(input.category) && input.category !== "general") return;
     if (priorityRank[input.priority] < priorityRank[minimumPriority.current]) return;
     const now = Date.now();
@@ -38,7 +40,7 @@ export function useTransientActivity() {
       if (now - last < 180 && current.current?.rateKey !== input.rateKey) return;
     }
     const { replaceGroup = true, ...capsuleInput } = input;
-    const next = { ...capsuleInput, id: ++nextId.current };
+    const next = { ...capsuleInput, id: ++nextId.current, occurredAt: Date.now() };
     if (replaceGroup && next.group) queue.current = queue.current.filter((item) => item.group !== next.group);
     if (replaceGroup && next.group && current.current?.group === next.group) return show(next);
     if (current.current?.rateKey && current.current.rateKey === next.rateKey) return show(next);
@@ -72,5 +74,7 @@ export function useTransientActivity() {
   }, []);
 
   useEffect(() => () => { if (timer.current !== undefined) window.clearTimeout(timer.current); }, []);
-  return { activity: capsule?.message ?? null, capsule, announce, announceSequence, setEnabledCategories, setMinimumPriority };
+  const dismissHistory = useCallback((id: number) => setHistory((items) => items.filter((item) => item.id !== id)), []);
+  const clearHistory = useCallback(() => setHistory([]), []);
+  return { activity: capsule?.message ?? null, capsule, history, dismissHistory, clearHistory, announce, announceSequence, setEnabledCategories, setMinimumPriority };
 }
