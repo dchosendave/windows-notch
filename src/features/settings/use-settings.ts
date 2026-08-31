@@ -132,8 +132,28 @@ export function useSettings(onShortcut: () => void) {
         await store.current?.set(SETTINGS_KEY, next);
         await store.current?.save();
       } catch (updateError) {
+        try {
+          if (key === "launchAtLogin") {
+            if (previous) await enable(); else await disable();
+          } else if (key === "alwaysOnTop") {
+            await getCurrentWindow().setAlwaysOnTop(previous as boolean);
+          } else if (key === "operatingMode") {
+            await nativeClient.setTaskbarReplacement(previous === "replacement");
+          } else if (key === "globalShortcut") {
+            const shortcut = previousSettings.shortcut;
+            if (previous) await register(shortcut, ({ state }) => { if (state === "Pressed") shortcutCallback.current(); });
+            else await unregister(shortcut).catch(() => undefined);
+          } else if (key === "shortcut" && previousSettings.globalShortcut) {
+            await unregister(value as HaminSettings["shortcut"]).catch(() => undefined);
+            await register(previous as HaminSettings["shortcut"], ({ state }) => { if (state === "Pressed") shortcutCallback.current(); });
+          }
+          await store.current?.set(SETTINGS_KEY, previousSettings);
+          await store.current?.save();
+        } catch (rollbackError) {
+          setError(`Could not update setting and rollback was incomplete: ${messageFrom(rollbackError)}`);
+        }
         setSettings(previousSettings);
-        setError(`Could not update setting: ${messageFrom(updateError)}`);
+        if (!useSettingsStore.getState().error) setError(`Could not update setting: ${messageFrom(updateError)}`);
       }
       });
       updateQueue.current = operation.catch(() => undefined);

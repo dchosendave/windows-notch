@@ -126,7 +126,7 @@ export function SettingsView({ settings, ready, error, monitors, onBack, onColla
             <CommitRange value={settings.horizontalOffset} min={-300} max={300} step={5} label={(value) => `Horizontal: ${value}px`} onCommit={(value) => onChange("horizontalOffset", value)} />
             <CommitRange value={settings.topOffset} min={0} max={100} step={2} label={(value) => `Top: ${value}px`} onCommit={(value) => onChange("topOffset", value)} />
             <CommitRange value={settings.floatingOffset} min={0} max={30} label={(value) => `Floating gap: ${value}px`} onCommit={(value) => onChange("floatingOffset", value)} />
-            <SettingToggle checked={settings.followActiveMonitor} disabled label="Follow active display" description="Requires a future placement capability" onChange={(value) => onChange("followActiveMonitor", value)} />
+            <SettingToggle checked={settings.followActiveMonitor} disabled={!ready} label="Follow active display" description="Move to the foreground window's display" onChange={(value) => onChange("followActiveMonitor", value)} />
           </div>
         </section>
 

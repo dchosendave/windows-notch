@@ -17,7 +17,10 @@ export function usePowerState() {
 
     const connect = async () => {
       removeListener = await listen<unknown>(POWER_STATE_EVENT, (event) => {
-        if (!disposed) setPower(powerStateSchema.parse(event.payload));
+        if (disposed) return;
+        const parsed = powerStateSchema.safeParse(event.payload);
+        if (parsed.success) setPower(parsed.data);
+        else reportOperationalError("Invalid power status update", parsed.error);
       });
 
       if (disposed) {

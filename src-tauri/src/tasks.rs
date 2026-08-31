@@ -1,3 +1,12 @@
+fn is_allowed_custom_target(target: &str) -> bool {
+    let normalized = target.to_ascii_lowercase();
+    let allowed_uri = normalized.starts_with("https://")
+        || normalized.starts_with("http://")
+        || normalized.starts_with("ms-settings:");
+    let path = std::path::Path::new(target);
+    allowed_uri || (path.is_absolute() && path.exists())
+}
+
 #[cfg(windows)]
 #[tauri::command]
 pub fn launch_quick_action(action: &str) -> Result<(), String> {
@@ -55,7 +64,6 @@ pub fn launch_quick_action(action: &str) -> Result<(), String> {
 #[cfg(windows)]
 #[tauri::command]
 pub fn launch_custom_target(target: &str) -> Result<(), String> {
-    use std::path::Path;
     use windows::{
         core::PCWSTR,
         Win32::{
@@ -63,11 +71,7 @@ pub fn launch_custom_target(target: &str) -> Result<(), String> {
             UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL},
         },
     };
-    let allowed_uri = target.starts_with("https://")
-        || target.starts_with("http://")
-        || target.starts_with("ms-settings:");
-    let allowed_path = Path::new(target).is_absolute() && Path::new(target).exists();
-    if !allowed_uri && !allowed_path {
+    if !is_allowed_custom_target(target) {
         return Err("Custom actions must be an http(s) URL, Windows Settings URI, or existing absolute path".into());
     }
     let operation = wide("open");
@@ -91,7 +95,6 @@ pub fn launch_custom_target(target: &str) -> Result<(), String> {
 #[cfg(windows)]
 #[tauri::command]
 pub fn reveal_file(path: &str) -> Result<(), String> {
-    use std::path::Path;
     use windows::{
         core::PCWSTR,
         Win32::{
@@ -99,7 +102,8 @@ pub fn reveal_file(path: &str) -> Result<(), String> {
             UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL},
         },
     };
-    if !Path::new(path).is_absolute() {
+    let candidate = std::path::Path::new(path);
+    if !candidate.is_absolute() || !candidate.exists() {
         return Err("File shelf path is invalid".into());
     }
     let operation = wide("open");
@@ -124,4 +128,22 @@ pub fn reveal_file(path: &str) -> Result<(), String> {
 #[cfg(windows)]
 fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_custom_target;
+
+    #[test]
+    fn accepts_supported_url_schemes_case_insensitively() {
+        assert!(is_allowed_custom_target("HTTPS://example.com"));
+        assert!(is_allowed_custom_target("ms-settings:display"));
+    }
+
+    #[test]
+    fn rejects_shell_and_unsupported_targets() {
+        assert!(!is_allowed_custom_target("javascript:alert(1)"));
+        assert!(!is_allowed_custom_target("cmd.exe /c whoami"));
+        assert!(!is_allowed_custom_target("relative-file.txt"));
+    }
 }

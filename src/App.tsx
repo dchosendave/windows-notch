@@ -2,8 +2,7 @@ import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, use
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 
-import { CommandPalette, type HaminCommand } from "@/features/command/components/CommandPalette";
-import { CompanionView } from "@/features/companion/components/CompanionView";
+import type { HaminCommand } from "@/features/command/components/CommandPalette";
 import { useForegroundContext } from "@/features/companion/use-foreground-context";
 import { useFileShelf } from "@/features/command/use-file-shelf";
 import { useMediaSession } from "@/features/media/use-media-session";
@@ -17,14 +16,12 @@ import { COLLAPSED_SIZES, VIEW_SIZES } from "@/features/notch/notch-geometry";
 import { useCompanionEvents } from "@/features/notch/use-companion-events";
 import { useNativeNotchWindow } from "@/features/notch/use-native-notch-window";
 import { usePowerState } from "@/features/power/use-power-state";
-import { FocusTimerView } from "@/features/productivity/components/FocusTimerView";
 import { OnboardingView } from "@/features/onboarding/OnboardingView";
 import { useFocusTimer } from "@/features/productivity/use-focus-timer";
 import type { MonitorSummary } from "@/features/settings/components/SettingsView";
 import type { HaminSettings } from "@/features/settings/settings-schema";
 import { useSettings } from "@/features/settings/use-settings";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { SystemControlsView } from "@/features/system/components/SystemControlsView";
 import { useAudio } from "@/features/system/use-audio";
 import { useAudioLevels } from "@/features/system/use-audio-levels";
 import { useQuickActions, type QuickAction } from "@/features/tasks/use-quick-actions";
@@ -37,6 +34,10 @@ import "./App.css";
 
 type ExpansionReason = "click" | "hover";
 const SettingsView = lazy(() => import("@/features/settings/components/SettingsView").then((module) => ({ default: module.SettingsView })));
+const CommandPalette = lazy(() => import("@/features/command/components/CommandPalette").then((module) => ({ default: module.CommandPalette })));
+const CompanionView = lazy(() => import("@/features/companion/components/CompanionView").then((module) => ({ default: module.CompanionView })));
+const FocusTimerView = lazy(() => import("@/features/productivity/components/FocusTimerView").then((module) => ({ default: module.FocusTimerView })));
+const SystemControlsView = lazy(() => import("@/features/system/components/SystemControlsView").then((module) => ({ default: module.SystemControlsView })));
 const MODE_ORDER: Record<NotchMode, number> = { idle: 0, media: 0, companion: 1, productivity: 2, system: 3, command: 4, settings: 5 };
 
 function clearTimer(timer: { current: number | undefined }) {
@@ -119,6 +120,18 @@ function App() {
   }, [setEnabledCategories, settings.capsuleCategories]);
   useEffect(() => setMinimumPriority(settings.capsuleMinimumPriority), [setMinimumPriority, settings.capsuleMinimumPriority]);
   useEffect(() => {
+    if (!settings.followActiveMonitor) return;
+    let inFlight = false;
+    const follow = () => {
+      if (inFlight) return;
+      inFlight = true;
+      void nativeClient.followForegroundMonitor().catch((error) => announce(String(error), 3_000, { rateKey: "follow-monitor" })).finally(() => { inFlight = false; });
+    };
+    follow();
+    const timer = window.setInterval(follow, 1_500);
+    return () => window.clearInterval(timer);
+  }, [announce, settings.followActiveMonitor]);
+  useEffect(() => {
     const showError = (event: Event) => announce((event as CustomEvent<AppError>).detail.message, 4_000, { category: "general", priority: "high", rateKey: "operational-error" });
     window.addEventListener(HAMIN_ERROR_EVENT, showError);
     return () => window.removeEventListener(HAMIN_ERROR_EVENT, showError);
@@ -126,7 +139,7 @@ function App() {
   const audioLevels = useAudioLevels(settings.audioVisualization === "reactive" && Boolean(media.session?.isPlaying));
   const artworkAccent = useArtworkAccent(media.session?.artworkDataUrl, settings.accent === "artwork");
   useCompanionEvents({ session: media.session, power, audioDevice: audio.state.deviceName, revealTrack: settings.revealOnTrackChange, announce, announceSequence });
-  const hasCollapsedActivity = Boolean(activity || focusTimer.endsAt || (settings.collapsedLayout === "track" && media.session));
+  const hasCollapsedActivity = Boolean(activity || focusTimer.active || (settings.collapsedLayout === "track" && media.session));
   collapsedActivity.current = hasCollapsedActivity;
   const collapsedSize = COLLAPSED_SIZES[settings.density][hasCollapsedActivity ? "activity" : "minimal"];
   const attached = phase === "attached" || (phase === "interaction-locked" && resumePhase === "attached");
@@ -350,10 +363,10 @@ function App() {
                 {onboarding ? <OnboardingView onFinish={() => void updateSetting("onboardingComplete", true)} /> : <AnimatePresence initial={false} mode="popLayout" custom={viewDirection}>
                   <motion.div key={mode} custom={viewDirection} variants={viewVariants} initial="enter" animate="center" exit="exit" className="view-motion-shell" transition={{ duration: motionProfile.contentDuration }}>
                 {mode === "settings" && <Suspense fallback={<div className="view-loading">Loading settings…</div>}><SettingsView settings={settings} ready={settingsReady} error={settingsError} monitors={monitors} onBack={closeUtilityView} onCollapse={collapse} onChange={changeSetting} /></Suspense>}
-                {mode === "command" && <CommandPalette commands={commands} note={settings.quickNote} clipboardHistory={settings.clipboardHistoryEnabled ? settings.clipboardHistory : []} shelfFiles={fileShelf.files} onClearShelf={fileShelf.clear} onRevealFile={(path) => void nativeClient.revealFile(path).catch((error) => announce(String(error)))} onCopyFile={(path) => void navigator.clipboard.writeText(path).then(() => announce("Path copied"))} onBack={closeUtilityView} onNoteChange={(note) => changeSetting("quickNote", note)} onPasteCapture={() => void captureClipboard()} onCopyHistory={(value) => void copyHistory(value)} />}
-                {mode === "companion" && <CompanionView context={foreground.context} history={settings.notificationInbox ? history : []} metrics={metrics} onBack={closeUtilityView} onCollapse={collapse} onRefreshContext={() => void foreground.refresh()} onRefreshMetrics={refreshMetrics} onDismiss={dismissHistory} onClear={clearHistory} onOpenPrivacy={() => void launchQuickAction("microphonePrivacy")} onOpenCalendar={() => void launchQuickAction("calendar")} />}
-                {mode === "system" && <SystemControlsView volume={audio.state.volume} muted={audio.state.muted} deviceName={audio.state.deviceName} deviceCount={audio.state.deviceCount} loading={audio.loading} error={audio.error} onBack={closeUtilityView} onRefresh={() => void audio.refresh()} onToggleMute={() => void toggleMute()} onVolumeChange={(volume) => void changeVolume(volume)} onLaunch={(action) => void launchQuickAction(action)} />}
-                {mode === "productivity" && <FocusTimerView now={now} timerEndsAt={focusTimer.endsAt} remaining={focusTimer.remaining} duration={focusTimer.duration} presets={settings.focusPresets} completedThisWeek={focusTimer.completedThisWeek} onBack={closeUtilityView} onCollapse={collapse} onStart={startTimer} onStop={stopTimer} />}
+                {mode === "command" && <Suspense fallback={<div className="view-loading">Loading commands…</div>}><CommandPalette commands={commands} note={settings.quickNote} clipboardHistory={settings.clipboardHistoryEnabled ? settings.clipboardHistory : []} shelfFiles={fileShelf.files} onClearShelf={fileShelf.clear} onRemoveFile={fileShelf.remove} onOpenFile={(path) => void nativeClient.launchCustomTarget(path).catch((error) => announce(String(error)))} onRevealFile={(path) => void nativeClient.revealFile(path).catch((error) => announce(String(error)))} onCopyFile={(path) => void navigator.clipboard.writeText(path).then(() => announce("Path copied"))} onBack={closeUtilityView} onNoteChange={(note) => changeSetting("quickNote", note)} onPasteCapture={() => void captureClipboard()} onCopyHistory={(value) => void copyHistory(value)} /></Suspense>}
+                {mode === "companion" && <Suspense fallback={<div className="view-loading">Loading companion…</div>}><CompanionView context={foreground.context} history={settings.notificationInbox ? history : []} metrics={metrics} onBack={closeUtilityView} onCollapse={collapse} onRefreshContext={() => void foreground.refresh()} onRefreshMetrics={refreshMetrics} onDismiss={dismissHistory} onClear={clearHistory} onOpenPrivacy={() => void launchQuickAction("microphonePrivacy")} onOpenCalendar={() => void launchQuickAction("calendar")} /></Suspense>}
+                {mode === "system" && <Suspense fallback={<div className="view-loading">Loading audio…</div>}><SystemControlsView volume={audio.state.volume} muted={audio.state.muted} deviceName={audio.state.deviceName} deviceCount={audio.state.deviceCount} loading={audio.loading} error={audio.error} onBack={closeUtilityView} onRefresh={() => void audio.refresh()} onToggleMute={() => void toggleMute()} onVolumeChange={(volume) => void changeVolume(volume)} onLaunch={(action) => void launchQuickAction(action)} /></Suspense>}
+                {mode === "productivity" && <Suspense fallback={<div className="view-loading">Loading timer…</div>}><FocusTimerView now={now} timerEndsAt={focusTimer.endsAt} timerActive={focusTimer.active} paused={focusTimer.paused} remaining={focusTimer.remaining} duration={focusTimer.duration} presets={settings.focusPresets} completedThisWeek={focusTimer.completedThisWeek} onBack={closeUtilityView} onCollapse={collapse} onStart={startTimer} onStop={stopTimer} onPause={focusTimer.pause} onResume={focusTimer.resume} /></Suspense>}
                 {(mode === "idle" || mode === "media") && <DashboardView session={media.session} sessions={media.sessions} loading={media.loading} power={power} now={now} displayedPosition={displayedPosition} timelineStyle={timelineStyle} onSeekPreview={setSeekPreview} onCommitSeek={(value) => void commitSeek(value)} onControl={(action) => void media.control(action)} onSelectSession={(sourceAppId) => void media.selectSession(sourceAppId)} onOpenCompanion={openCompanion} onOpenProductivity={() => openView("productivity")} onOpenSystem={openSystem} onOpenSettings={openSettings} onOpenCommand={openCommand} onCollapse={collapse} />}
                   </motion.div>
                 </AnimatePresence>}

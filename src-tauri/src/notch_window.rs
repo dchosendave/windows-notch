@@ -204,6 +204,55 @@ pub fn set_notch_placement(
     center_at_top(&window).map_err(|error| error.to_string())
 }
 
+#[cfg(windows)]
+#[tauri::command]
+pub fn follow_foreground_monitor(window: WebviewWindow) -> Result<(), String> {
+    use windows::Win32::{
+        Graphics::Gdi::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST},
+        UI::WindowsAndMessaging::GetForegroundWindow,
+    };
+
+    let foreground = unsafe { GetForegroundWindow() };
+    if foreground.0.is_null() {
+        return Ok(());
+    }
+    let target = unsafe { MonitorFromWindow(foreground, MONITOR_DEFAULTTONEAREST) };
+    let monitors = window
+        .available_monitors()
+        .map_err(|error| error.to_string())?;
+    let Some(index) = monitors.iter().position(|monitor| {
+        let position = monitor.position();
+        let size = monitor.size();
+        let center_x = position.x + (size.width / 2) as i32;
+        let center_y = position.y + (size.height / 2) as i32;
+        let probe = windows::Win32::Foundation::POINT {
+            x: center_x,
+            y: center_y,
+        };
+        (unsafe {
+            windows::Win32::Graphics::Gdi::MonitorFromPoint(probe, MONITOR_DEFAULTTONEAREST)
+        }) == target
+    }) else {
+        return Ok(());
+    };
+
+    let changed = {
+        let mut preference = placement()
+            .lock()
+            .map_err(|_| "Placement state is unavailable")?;
+        if preference.monitor == index {
+            false
+        } else {
+            preference.monitor = index;
+            true
+        }
+    };
+    if changed {
+        center_at_top(&window).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 fn resize_and_center(window: &WebviewWindow, width: f64, height: f64) -> Result<(), HaminError> {
     if !valid_dimensions(width, height) {
         return Err(HaminError::InvalidDimensions { width, height });

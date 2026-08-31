@@ -87,7 +87,7 @@ fn set_state(state: usize) {
 pub fn set_taskbar_replacement(enabled: bool) -> Result<(), String> {
     use windows::Win32::UI::Shell::{SHAppBarMessage, ABM_GETSTATE, ABS_AUTOHIDE, APPBARDATA};
 
-    if enabled && !REPLACEMENT_ENABLED.swap(true, Ordering::SeqCst) {
+    if enabled && !REPLACEMENT_ENABLED.load(Ordering::SeqCst) {
         let mut data = APPBARDATA {
             cbSize: std::mem::size_of::<APPBARDATA>() as u32,
             ..Default::default()
@@ -96,6 +96,10 @@ pub fn set_taskbar_replacement(enabled: bool) -> Result<(), String> {
         write_recovery_state(original)?;
         ORIGINAL_STATE.store(original, Ordering::SeqCst);
         set_state(original | ABS_AUTOHIDE as usize);
+        // Publish the enabled state only after recovery data is durable and the
+        // Windows state has been changed. Otherwise a failed recovery write can
+        // make shutdown restore the uninitialized state value.
+        REPLACEMENT_ENABLED.store(true, Ordering::SeqCst);
     } else if !enabled && REPLACEMENT_ENABLED.swap(false, Ordering::SeqCst) {
         set_state(ORIGINAL_STATE.load(Ordering::SeqCst));
         clear_recovery_state();

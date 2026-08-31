@@ -62,6 +62,7 @@ pub fn run() {
             notch_window::animate_notch_size,
             notch_window::list_monitors,
             notch_window::set_notch_placement,
+            notch_window::follow_foreground_monitor,
             media::get_media_state,
             media::control_media,
             media::seek_media,

@@ -11,6 +11,7 @@ export const nativeClient = {
   resizeNotch: (request: ResizeNotchRequest) => invoke<void>("animate_notch_size", request),
   listMonitors: <T>() => invoke<T[]>("list_monitors"),
   setPlacement: (request: PlacementRequest) => invoke<void>("set_notch_placement", request),
+  followForegroundMonitor: () => invoke<void>("follow_foreground_monitor"),
   setTaskbarReplacement: (enabled: boolean) => invoke<void>("set_taskbar_replacement", { enabled }),
   getProcessMetrics: () => invoke<ProcessMetrics>("get_process_metrics"),
   getForegroundContext: () => invoke<ForegroundContext>("get_foreground_context"),
