@@ -46,6 +46,8 @@ pub fn run() {
             #[cfg(windows)]
             notch_window::apply_windows_tool_window_style(&window)?;
             power::initialize_power_service(app.handle())?;
+            #[cfg(windows)]
+            audio::start_watcher(app.handle().clone());
             taskbar::start_watchdog();
 
             let app_handle = app.handle().clone();

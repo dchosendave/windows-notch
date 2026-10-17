@@ -48,8 +48,9 @@ src/
 │   ├── lib/           formatting and operational error reporting
 │   ├── motion/        motion tokens and reusable primitives
 │   └── native/        typed invoke boundary
-├── App.tsx            orchestration and cross-feature wiring
-└── App.css            current application stylesheet
+├── styles/            feature stylesheets, imported in cascade order by App.css
+├── App.tsx            composes feature hooks and renders the notch surface
+└── App.css            Tailwind/font imports plus ordered feature stylesheet imports
 ```
 
 ## Native structure
@@ -93,6 +94,19 @@ src-tauri/src/
 
 Phase and mode are independent. This prevents content selection from becoming entangled with window attachment and collapse behavior.
 
+## App composition
+
+`App.tsx` only wires feature hooks together. Behavior lives in the features:
+
+- `use-notch-controller.ts`: expand/collapse, inactivity, select locks, focus loss, Escape, and pointer handlers (`useNotchController`), plus native sizing and onboarding (`useNotchLayout`).
+- `notch-logic.ts`: pure phase, auto-collapse, and view-direction rules.
+- `NotchViews.tsx`: routes the expanded notch to the view for the current mode and loads per-view data when a view opens.
+- `hamin-commands.ts` and `use-clipboard-history.ts`: command palette entries and explicit clipboard capture.
+- `use-notch-theme.ts`: accent and surface CSS variables, including root-level tokens for portaled select menus.
+- `capsule-queue.ts`: capsule priority, grouping, filtering, and rate limiting, independent of React.
+
+Stylesheets keep the original cascade order; when adding rules, put them in the feature's file and check that no earlier file styles the same element with equal specificity.
+
 ## Sizing
 
 View geometry is centralized in `notch-geometry.ts`. The rendered Motion surface and native Tauri WebView use the same resolved target size. Special surfaces such as onboarding must participate in this resolution; otherwise the native WebView can clip taller React content.
@@ -103,9 +117,13 @@ Native resize operations are synchronized through `use-native-notch-window.ts`. 
 
 The Rust media service owns Windows media-session discovery, selected session state, and event subscriptions. Frontend hooks validate returned payloads before using them. Position is interpolated locally between updates to avoid excessive native polling.
 
+## Audio state
+
+A native watcher thread (`audio::start_watcher`) reads volume, mute, and the default output device every 500 ms and emits `audio-state` only when something changes. Every window listens to that event instead of polling over IPC, so volume changes from the Windows flyout or media keys appear immediately.
+
 ## Capsule system
 
-`use-transient-activity.ts` owns:
+`capsule-queue.ts` implements, and `use-transient-activity.ts` exposes to React:
 
 - Current capsule
 - Priority-sorted queue

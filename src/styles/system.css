@@ -1,0 +1,150 @@
+.system-view {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.volume-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.volume-button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(var(--accent-rgb), 0.13);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.volume-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 8px;
+}
+
+.volume-copy > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+
+.volume-copy span {
+  color: rgba(255, 255, 255, 0.48);
+  font-variant-numeric: tabular-nums;
+}
+
+.system-slider {
+  width: 100%;
+  height: 4px;
+  accent-color: rgb(var(--accent-rgb));
+  cursor: pointer;
+}
+
+.audio-output-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 7px;
+  padding: 7px 9px;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.audio-output-row > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.audio-output-row strong,
+.audio-output-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-output-row strong { font-size: var(--text-xs); }
+.audio-output-row small { color: rgba(255, 255, 255, 0.42); font-size: var(--text-2xs); }
+.audio-output-row em { color: rgb(var(--accent-rgb)); font-size: var(--text-2xs); font-style: normal; }
+.audio-output-row:hover { color: white; background: rgba(var(--accent-rgb), 0.1); }
+
+.capsule-priority {
+  max-width: 245px;
+  margin-bottom: 8px;
+}
+
+.file-shelf {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.file-shelf header,
+.file-shelf header > span,
+.file-shelf > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.file-shelf header { justify-content: space-between; font-size: var(--text-2xs); }
+.file-shelf header button { display: grid; padding: 3px; color: rgba(255, 255, 255, 0.5); background: transparent; border: 0; cursor: pointer; }
+.file-shelf > small { color: rgba(255, 255, 255, 0.38); font-size: var(--text-2xs); line-height: 1.35; }
+.file-shelf > div { min-width: 0; color: rgba(255, 255, 255, 0.58); font-size: var(--text-2xs); }
+.file-shelf > div span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-shelf > div button { display: grid; padding: 2px; place-items: center; color: rgba(255,255,255,.4); background: transparent; border: 0; cursor: pointer; }
+.file-shelf > div button:hover { color: rgb(var(--accent-rgb)); }
+
+.system-links {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  padding-top: 8px;
+}
+
+.system-links button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: var(--text-2xs);
+}
+
+.system-links button:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.audio-presets { display: grid; grid-template-columns: auto repeat(3, 1fr); margin-top: 6px; align-items: center; gap: 5px; }
+.audio-presets > span { padding-right: 3px; color: rgba(255,255,255,.38); font-size: var(--text-micro); }
+.audio-presets button { height: 23px; color: rgba(255,255,255,.52); background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.055); border-radius: 7px; font-size: var(--text-micro); cursor: pointer; }
+.audio-presets button[data-active="true"] { color: rgb(var(--accent-rgb)); background: rgba(var(--accent-rgb),.12); border-color: rgba(var(--accent-rgb),.3); }

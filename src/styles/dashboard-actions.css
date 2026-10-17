@@ -1,0 +1,10 @@
+.dashboard-view { display: flex; flex-direction: column; }
+.adaptive-actions { flex-shrink: 0; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.09); }
+.adaptive-actions header { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-xs); }
+.adaptive-actions header small { margin-left: 8px; color: rgba(255,255,255,.5); }
+.adaptive-actions > div { display: flex; gap: 8px; margin-top: 4px; }
+.adaptive-actions > div > button { flex: 1; min-width: 0; padding: 7px 9px; text-align: left; color: rgba(255,255,255,.9); background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .16); border-radius: 8px; cursor: pointer; }
+.adaptive-actions strong, .adaptive-actions > div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
+.adaptive-actions > div small { margin-top: 3px; color: rgba(255,255,255,.55); font-size: var(--text-2xs); }
+.adaptive-actions button:focus-visible { outline: 2px solid rgb(var(--accent-rgb)); outline-offset: -2px; }
+.adaptive-actions > div > button:hover { background: rgba(var(--accent-rgb), .16); }

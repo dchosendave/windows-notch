@@ -10,11 +10,14 @@ npm run verify
 
 This performs:
 
-1. TypeScript compilation
-2. Vite production build
-3. Rust format check
-4. Clippy for all targets with warnings treated as errors
-5. Rust library tests
+1. Frontend unit tests (`npm test`, Node's built-in runner over `src/**/*.test.mjs`)
+2. TypeScript compilation
+3. Vite production build
+4. Rust format check
+5. Clippy for all targets with warnings treated as errors
+6. Rust library tests
+
+Frontend tests cover pure modules only: notch rules and geometry (`notch-logic.ts`, `notch-geometry.ts`), the notch store, the capsule queue (`capsule-queue.ts`, with a fake clock), context commands, and settings repair. Keep testable logic free of `@/` imports and Tauri calls so Node can load it directly; type-only imports are fine.
 
 Also run `git diff --check` before committing to catch whitespace errors.
 
@@ -54,7 +57,8 @@ Also run `git diff --check` before committing to catch whitespace errors.
 - Toggle mute.
 - Select Quiet, Balanced, and Loud profiles.
 - Scroll over collapsed Hamin when Volume wheel is enabled.
-- Switch the Windows output device and refresh System controls.
+- Change volume or mute from the Windows flyout or a keyboard key and confirm Hamin updates within a second.
+- Switch the Windows output device and confirm the device name updates without a refresh.
 - Verify audio visualization resumes after device changes.
 
 ### Capsules

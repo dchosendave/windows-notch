@@ -36,11 +36,11 @@ Arbitrary Bluetooth battery telemetry and Phone Link status are not currently ex
 
 ### Active-display following
 
-Static multi-monitor positioning works. Automatically moving Hamin to the monitor containing the foreground window is capability-gated and disabled.
+Static multi-monitor positioning works. **Follow active display** (off by default) moves Hamin to the foreground window's monitor by checking every 1.5 seconds; an event-driven foreground hook would be cheaper.
 
 ### Automatic updates
 
-The preference model reserves update behavior, but automatic updates are disabled until a signed release endpoint and updater configuration exist.
+Automatic updates are not implemented and have no setting until a signed release endpoint and updater configuration exist.
 
 ### File shelf
 
@@ -55,8 +55,7 @@ Timers and history work, but automatic Pomodoro cycles, break scheduling, labels
 ### Phase 1: production foundation
 
 - Decide the final product name and migrate identifiers.
-- Add frontend unit/component tests and Rust tests for command validation.
-- Split the large stylesheet by feature without changing cascade behavior.
+- Add component tests for views (pure logic is covered by `npm test`).
 - Add a user-visible diagnostic export with privacy redaction.
 - Configure crash reporting only if it can remain opt-in and privacy-preserving.
 - Sign installers and test upgrades.

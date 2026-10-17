@@ -1,0 +1,9 @@
+.onboarding-view { display: flex; height: 100%; padding: 12px 24px 16px; align-items: center; flex-direction: column; justify-content: center; text-align: center; }
+.onboarding-mark { display: grid; width: 48px; height: 48px; margin-bottom: 10px; place-items: center; color: rgb(var(--accent-rgb)); background: rgba(var(--accent-rgb),.14); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 16px; }
+.onboarding-view > small { color: rgba(255,255,255,.38); font-size: var(--text-micro); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.onboarding-view h1 { margin: 8px 0 5px; font-size: var(--display-sm); }
+.onboarding-view p { max-width: 330px; margin: 0; color: rgba(255,255,255,.52); font-size: var(--text-sm); line-height: 1.45; }
+.onboarding-dots { display: flex; margin: 13px 0 10px; gap: 5px; }
+.onboarding-dots i { width: 5px; height: 5px; background: rgba(255,255,255,.2); border-radius: 999px; }
+.onboarding-dots i[data-active="true"] { width: 14px; background: rgb(var(--accent-rgb)); }
+.onboarding-view > button { display: inline-flex; height: 30px; padding: 0 12px; align-items: center; gap: 7px; color: white; background: rgba(var(--accent-rgb),.72); border: 0; border-radius: 8px; font-size: var(--text-xs); font-weight: 650; cursor: pointer; }

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "check": "npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
-    "test": "node src/features/command/context-commands.test.mjs",
+    "test": "node --test \"src/**/*.test.mjs\"",
     "verify": "npm test && npm run build && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml --lib",
     "release": "tauri build",
     "preview": "vite preview",

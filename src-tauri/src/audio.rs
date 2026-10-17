@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+pub const AUDIO_STATE_EVENT: &str = "audio-state";
+const WATCH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(500);
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioState {
     volume: u8,
@@ -117,4 +120,37 @@ pub fn toggle_master_mute() -> Result<AudioState, String> {
             .map_err(|e| e.to_string())?;
     }
     read_audio_state()
+}
+
+/// Emits `audio-state` whenever volume, mute, or the default output device changes,
+/// so every window can stay current without polling over IPC. One cheap COM read per
+/// tick on a dedicated thread replaces each view's own refresh loop.
+#[cfg(windows)]
+pub fn start_watcher(app: tauri::AppHandle) {
+    use tauri::Emitter;
+
+    let spawned = std::thread::Builder::new()
+        .name("hamin-audio-state".into())
+        .spawn(move || {
+            let Ok(_apartment) = crate::com::ComApartment::mta() else {
+                log::error!("Unable to initialize COM for the audio state watcher");
+                return;
+            };
+            let mut last: Option<AudioState> = None;
+            loop {
+                // A missing endpoint (no output device) is not an error worth logging every tick.
+                if let Ok(state) = read_audio_state() {
+                    if last.as_ref() != Some(&state) {
+                        if let Err(error) = app.emit(AUDIO_STATE_EVENT, &state) {
+                            log::warn!("Unable to publish audio state: {error}");
+                        }
+                        last = Some(state);
+                    }
+                }
+                std::thread::sleep(WATCH_INTERVAL);
+            }
+        });
+    if let Err(error) = spawned {
+        log::error!("Unable to start the audio state watcher: {error}");
+    }
 }

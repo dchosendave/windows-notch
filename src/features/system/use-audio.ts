@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { z } from "zod";
+import { reportOperationalError } from "@/shared/lib/report-error";
 import { nativeClient } from "@/shared/native/native-client";
+
+const AUDIO_STATE_EVENT = "audio-state";
 
 const audioStateSchema = z.object({
   volume: z.number().min(0).max(100),
@@ -31,10 +35,17 @@ export function useAudio() {
 
   useEffect(() => {
     let disposed = false;
-    const refreshSilently = () => void nativeClient.getAudioState().then((value) => { if (!disposed) setState(audioStateSchema.parse(value)); }).catch(() => undefined);
-    refreshSilently();
-    const interval = window.setInterval(refreshSilently, 10_000);
-    return () => { disposed = true; window.clearInterval(interval); };
+    let unlisten: (() => void) | undefined;
+    const apply = (value: unknown) => {
+      const parsed = audioStateSchema.safeParse(value);
+      if (!disposed && parsed.success) setState(parsed.data);
+    };
+    // The native watcher publishes every volume, mute, and device change.
+    void listen(AUDIO_STATE_EVENT, ({ payload }) => apply(payload))
+      .then((remove) => { if (disposed) remove(); else unlisten = remove; })
+      .catch((cause) => reportOperationalError("Audio updates are unavailable", cause));
+    void nativeClient.getAudioState().then(apply).catch(() => undefined);
+    return () => { disposed = true; unlisten?.(); };
   }, []);
 
   return {

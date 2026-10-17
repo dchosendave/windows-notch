@@ -1,0 +1,22 @@
+.tasks-header {
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  height: 32px;
+}
+
+.settings-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.settings-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-fade {
+  mask-image: linear-gradient(to bottom, transparent 0, black 8px, black calc(100% - 8px), transparent 100%);
+}
+
+.spin {
+  animation: task-spin 700ms linear infinite;
+}

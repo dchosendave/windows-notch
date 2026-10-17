@@ -67,10 +67,10 @@ export function SettingsView({ settings, ready, error, monitors, onBack, onColla
   const applyProfile = (profile: HaminSettings["activeProfile"]) => {
     const profiles = {
       custom: {},
-      work: { density: "comfortable", collapsedLayout: "track", capsuleMinimumPriority: "normal", contextAwareness: true, meetingControls: true },
+      work: { density: "comfortable", collapsedLayout: "track", capsuleMinimumPriority: "normal", contextAwareness: true },
       gaming: { density: "compact", collapsedLayout: "minimal", capsuleMinimumPriority: "high", expandOnHover: false, contextAwareness: true },
       minimal: { density: "compact", collapsedLayout: "minimal", capsuleMinimumPriority: "high", contextAwareness: false },
-      presentation: { density: "compact", collapsedLayout: "minimal", capsuleMinimumPriority: "high", privacyIndicators: true, revealOnTrackChange: false },
+      presentation: { density: "compact", collapsedLayout: "minimal", capsuleMinimumPriority: "high", revealOnTrackChange: false },
     } satisfies Record<HaminSettings["activeProfile"], Partial<HaminSettings>>;
     for (const [key, value] of Object.entries(profiles[profile])) onChange(key as keyof HaminSettings, value as never);
     onChange("activeProfile", profile);
@@ -114,7 +114,6 @@ export function SettingsView({ settings, ready, error, monitors, onBack, onColla
             <SettingToggle checked={settings.clipboardHistoryEnabled} disabled={!ready} label="Clipboard history" description="Persist explicitly captured clipboard text" onChange={(value) => { onChange("clipboardHistoryEnabled", value); if (!value) onChange("clipboardHistory", []); }} />
             <SettingToggle checked={settings.contextAwareness} disabled={!ready} label="App context" description="Adapt to the foreground application" onChange={(value) => onChange("contextAwareness", value)} />
             <SettingToggle checked={settings.notificationInbox} disabled={!ready} label="Activity inbox" description="Keep recent capsules in the hub" onChange={(value) => onChange("notificationInbox", value)} />
-            <SettingToggle checked={settings.privacyIndicators} disabled={!ready} label="Privacy indicators" description="Surface camera and microphone access" onChange={(value) => onChange("privacyIndicators", value)} />
             <SettingToggle checked={settings.fileShelfPersistence} disabled={!ready} label="Persistent file shelf" description="Restore held file paths after restart" onChange={(value) => onChange("fileShelfPersistence", value)} />
           </div>
         </section>
@@ -154,12 +153,9 @@ export function SettingsView({ settings, ready, error, monitors, onBack, onColla
         </section>
 
         <section className="settings-section">
-          <h2>Integrations and recovery</h2>
+          <h2>Clipboard</h2>
           <div className="settings-grid">
-            <SelectSetting label="Calendar" description="Provider capability" ariaLabel="Calendar provider" value={settings.calendarProvider} options={[{ value: "none", label: "Not connected" }, { value: "system", label: "Windows calendar" }]} onChange={(value) => onChange("calendarProvider", value as HaminSettings["calendarProvider"])} />
             <SelectSetting label="Clipboard expiry" description="Remove captured text later" ariaLabel="Clipboard expiry" value={String(settings.clipboardExpiryMinutes)} options={[{ value: "0", label: "Never" }, { value: "15", label: "15 minutes" }, { value: "60", label: "1 hour" }, { value: "1440", label: "1 day" }]} onChange={(value) => onChange("clipboardExpiryMinutes", Number(value) as HaminSettings["clipboardExpiryMinutes"])} />
-            <SettingToggle checked={settings.meetingControls} disabled label="Meeting mode" description="Requires a supported meeting provider" onChange={(value) => onChange("meetingControls", value)} />
-            <SettingToggle checked={settings.autoUpdates} disabled label="Automatic updates" description="Requires a signed release endpoint" onChange={(value) => onChange("autoUpdates", value)} />
           </div>
         </section>
 

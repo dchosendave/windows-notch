@@ -24,3 +24,9 @@ assert.equal(repairSettings({}).settings.pinnedContext, null);
 assert.equal(repairSettings({ pinnedContext: "browser" }).settings.pinnedContext, "browser");
 assert.equal(repairSettings({ pinnedContext: "invalid" }).settings.pinnedContext, null);
 console.log("Adaptive layout and settings checks passed");
+// Removed placeholder settings must not break older settings files.
+const legacy = repairSettings({ autoUpdates: false, calendarProvider: "system", meetingControls: true, privacyIndicators: false, density: "large" });
+assert.equal(legacy.repaired, false);
+assert.equal(legacy.settings.density, "large");
+assert.equal("autoUpdates" in legacy.settings, false);
+console.log("Legacy settings checks passed");

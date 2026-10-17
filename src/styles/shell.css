@@ -1,0 +1,51 @@
+.notch-stage {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: flex-start;
+  background: transparent;
+  user-select: none;
+}
+
+.notch {
+  position: relative;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.96);
+  background:
+    radial-gradient(circle at 50% -50%, rgba(255, 255, 255, 0.13), transparent 55%),
+    rgba(7, 8, 10, var(--surface-opacity));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--notch-radius, 18px);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  transform-origin: top center;
+}
+
+.notch-stage[data-surface="solid"] .notch {
+  background: rgb(12, 13, 16);
+}
+
+.notch-stage[data-surface="oled"] .notch {
+  background: rgb(0, 0, 0);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.notch[data-expanded="true"][data-attached="true"] {
+  border-top: 0;
+  border-radius: 0 0 22px 22px;
+}
+
+.notch[data-expanded="true"][data-attached="false"] {
+  border-radius: 22px;
+}
+
+.notch::after {
+  position: absolute;
+  right: 18px;
+  bottom: 0;
+  left: 18px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  pointer-events: none;
+}

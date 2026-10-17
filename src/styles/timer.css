@@ -1,0 +1,66 @@
+.productivity-view {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.timer-face {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  color: rgba(var(--accent-rgb), 0.8);
+}
+
+.timer-face strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: var(--display-lg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  letter-spacing: -0.04em;
+}
+
+.timer-face small {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.timer-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  gap: 6px;
+}
+
+.timer-actions button {
+  display: flex;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: var(--text-2xs);
+}
+
+.timer-actions button:hover:not(:disabled) {
+  color: white;
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.timer-actions button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@keyframes task-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -20,7 +20,6 @@ Settings are validated with Zod, stored through the Tauri store plugin, and save
 | Clipboard history | On by default | Allows explicit snippet capture. |
 | App context | On by default | Enables foreground-context reporting in the hub. |
 | Activity inbox | On by default | Displays recent Hamin capsule history. |
-| Privacy indicators | On by default | Reserves privacy-category behavior and privacy-center access. Live attribution remains capability-gated. |
 | Persistent file shelf | Off by default | Persists held paths in local storage. |
 
 ## Position
@@ -31,7 +30,7 @@ Settings are validated with Zod, stored through the Tauri store plugin, and save
 | Horizontal offset | -300 to 300 in UI | Moves Hamin relative to centered placement. |
 | Top offset | 0 to 100 in UI | Adds distance from the monitor’s top edge. |
 | Floating gap | 0 to 30, default 10 | Separates collapsed/preview Hamin from the top. |
-| Follow active display | Capability-gated | Reserved for active-window monitor following. |
+| Follow active display | Off by default | Moves Hamin to the monitor containing the foreground window. |
 
 ## Appearance
 
@@ -49,14 +48,13 @@ Settings are validated with Zod, stored through the Tauri store plugin, and save
 
 Disabling animations also activates the strongest reduced-motion path. Windows reduced-motion preferences are respected by Motion.
 
-## Integrations and recovery
+## Clipboard
 
 | Setting | Behavior |
 |---|---|
-| Calendar | Not connected or Windows calendar handler. Event retrieval still requires provider integration. |
 | Clipboard expiry | Never, 15 minutes, one hour (default), one day. |
-| Meeting mode | Disabled until a supported provider exists. |
-| Automatic updates | Disabled until a signed release endpoint is configured. |
+
+Calendar, meeting, privacy-indicator, and automatic-update settings were removed until real integrations exist. Older settings files that still contain them load normally; the unknown fields are ignored.
 
 ## Focus presets
 

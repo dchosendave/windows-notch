@@ -1,79 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CapsuleQueue, type Capsule, type CapsuleCategory, type CapsulePriority } from "@/shared/lib/capsule-queue";
 
-export type CapsuleCategory = "general" | "media" | "audio" | "power" | "network" | "timer" | "clipboard" | "privacy" | "device";
-export type CapsulePriority = "low" | "normal" | "high";
-export type Capsule = { id: number; message: string; detail?: string; category: CapsuleCategory; priority: CapsulePriority; duration: number; rateKey?: string; group?: string; occurredAt: number };
+export type { Capsule, CapsuleCategory, CapsulePriority } from "@/shared/lib/capsule-queue";
 export type Announce = (message: string, duration?: number, options?: Partial<Pick<Capsule, "category" | "priority" | "detail" | "rateKey" | "group">>) => void;
 export type AnnounceSequence = (items: Array<{ message: string; duration: number }>, options?: Partial<Pick<Capsule, "category" | "priority" | "group">>) => void;
-const priorityRank = { low: 0, normal: 1, high: 2 } as const;
+
+const HISTORY_LIMIT = 30;
 
 export function useTransientActivity() {
   const [capsule, setCapsule] = useState<Capsule | null>(null);
   const [history, setHistory] = useState<Capsule[]>([]);
-  const current = useRef<Capsule | null>(null);
-  const queue = useRef<Capsule[]>([]);
-  const timer = useRef<number | undefined>(undefined);
-  const nextId = useRef(0);
-  const lastRate = useRef(new Map<string, number>());
-  const enabled = useRef<Set<CapsuleCategory> | null>(null);
-  const minimumPriority = useRef<CapsulePriority>("low");
-  const showRef = useRef<(next: Capsule | null) => void>(() => undefined);
+  const queue = useRef<CapsuleQueue | null>(null);
+  if (!queue.current) {
+    queue.current = new CapsuleQueue((next) => {
+      setCapsule(next);
+      if (next) setHistory((items) => [next, ...items.filter((item) => item.id !== next.id)].slice(0, HISTORY_LIMIT));
+    });
+  }
+  const engine = queue.current;
 
-  const show = useCallback((next: Capsule | null) => {
-    if (timer.current !== undefined) window.clearTimeout(timer.current);
-    current.current = next;
-    setCapsule(next);
-    if (!next) return;
-    setHistory((items) => [next, ...items.filter((item) => item.id !== next.id)].slice(0, 30));
-    timer.current = window.setTimeout(() => showRef.current(queue.current.shift() ?? null), next.duration);
-  }, []);
-  showRef.current = show;
+  const announce = useCallback<Announce>((message, duration = 2_400, options = {}) => {
+    engine.push({ message, duration, category: options.category ?? "general", priority: options.priority ?? "normal", detail: options.detail, rateKey: options.rateKey, group: options.group });
+  }, [engine]);
 
-  const push = useCallback((input: Omit<Capsule, "id" | "occurredAt"> & { replaceGroup?: boolean }) => {
-    if (enabled.current && !enabled.current.has(input.category) && input.category !== "general") return;
-    if (priorityRank[input.priority] < priorityRank[minimumPriority.current]) return;
-    const now = Date.now();
-    if (lastRate.current.size > 32) for (const [key, time] of lastRate.current) if (now - time > 60_000) lastRate.current.delete(key);
-    if (input.rateKey) {
-      const last = lastRate.current.get(input.rateKey) ?? 0;
-      lastRate.current.set(input.rateKey, now);
-      if (now - last < 180 && current.current?.rateKey !== input.rateKey) return;
-    }
-    const { replaceGroup = true, ...capsuleInput } = input;
-    const next = { ...capsuleInput, id: ++nextId.current, occurredAt: Date.now() };
-    if (replaceGroup && next.group) queue.current = queue.current.filter((item) => item.group !== next.group);
-    if (replaceGroup && next.group && current.current?.group === next.group) return show(next);
-    if (current.current?.rateKey && current.current.rateKey === next.rateKey) return show(next);
-    if (!current.current) return show(next);
-    if (priorityRank[next.priority] > priorityRank[current.current.priority]) {
-      queue.current.unshift(current.current);
-      return show(next);
-    }
-    queue.current.push(next);
-    queue.current.sort((left, right) => priorityRank[right.priority] - priorityRank[left.priority]);
-  }, [show]);
+  const announceSequence = useCallback<AnnounceSequence>((items, options = {}) => {
+    items.forEach((item, index) => engine.push({ ...item, category: options.category ?? "general", priority: options.priority ?? "low", group: options.group, replaceGroup: index === 0 }));
+  }, [engine]);
 
-  const announce = useCallback((message: string, duration = 2_400, options: Partial<Pick<Capsule, "category" | "priority" | "detail" | "rateKey" | "group">> = {}) => {
-    push({ message, duration, category: options.category ?? "general", priority: options.priority ?? "normal", detail: options.detail, rateKey: options.rateKey, group: options.group });
-  }, [push]);
+  const setEnabledCategories = useCallback((categories: CapsuleCategory[]) => engine.setEnabledCategories(categories), [engine]);
+  const setMinimumPriority = useCallback((priority: CapsulePriority) => engine.setMinimumPriority(priority), [engine]);
 
-  const announceSequence = useCallback((items: Array<{ message: string; duration: number }>, options: Partial<Pick<Capsule, "category" | "priority" | "group">> = {}) => {
-    items.forEach((item, index) => push({ ...item, category: options.category ?? "general", priority: options.priority ?? "low", group: options.group, replaceGroup: index === 0 }));
-  }, [push]);
-
-  const setEnabledCategories = useCallback((categories: CapsuleCategory[]) => {
-    enabled.current = new Set(categories);
-    queue.current = queue.current.filter((item) => enabled.current?.has(item.category) || item.category === "general");
-    if (current.current && current.current.category !== "general" && !enabled.current.has(current.current.category)) showRef.current(queue.current.shift() ?? null);
-  }, []);
-
-  const setMinimumPriority = useCallback((priority: CapsulePriority) => {
-    minimumPriority.current = priority;
-    queue.current = queue.current.filter((item) => priorityRank[item.priority] >= priorityRank[priority]);
-    if (current.current && priorityRank[current.current.priority] < priorityRank[priority]) showRef.current(queue.current.shift() ?? null);
-  }, []);
-
-  useEffect(() => () => { if (timer.current !== undefined) window.clearTimeout(timer.current); }, []);
+  useEffect(() => () => engine.dispose(), [engine]);
   const dismissHistory = useCallback((id: number) => setHistory((items) => items.filter((item) => item.id !== id)), []);
   const clearHistory = useCallback(() => setHistory([]), []);
   return { activity: capsule?.message ?? null, capsule, history, dismissHistory, clearHistory, announce, announceSequence, setEnabledCategories, setMinimumPriority };
