@@ -44,7 +44,7 @@ The preference model reserves update behavior, but automatic updates are disable
 
 ### File shelf
 
-The shelf holds paths rather than file objects. It does not currently support dragging a held file back out of WebView2, thumbnails, per-item pinning, or individual expiration.
+Dropping files opens Drop & act, with up to eight unique paths, image previews (PNG/JPEG/GIF/WebP up to 5 MB), UTF-8 text previews up to 64 KB, copy text/path actions, and Open/Reveal. Each drop replaces the shelf. It does not yet support OCR, resizing, ZIP creation, dragging files back out, per-item pinning, or expiration.
 
 ### Focus sessions
 
@@ -95,4 +95,3 @@ A proposed feature should answer yes to most of these questions:
 - Can it be disabled?
 - Does it preserve companion mode as the safe default?
 - Does it degrade honestly when unsupported?
-

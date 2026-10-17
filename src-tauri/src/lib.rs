@@ -4,6 +4,7 @@ mod com;
 mod context;
 mod diagnostics;
 mod error;
+mod file_preview;
 mod media;
 mod notch_window;
 mod power;
@@ -79,7 +80,8 @@ pub fn run() {
             context::get_foreground_context,
             taskbar::set_taskbar_replacement,
             tasks::launch_custom_target,
-            tasks::reveal_file
+            tasks::reveal_file,
+            file_preview::preview_shelf_file
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

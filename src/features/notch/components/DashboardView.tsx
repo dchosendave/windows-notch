@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AlarmClock, Bell, CalendarDays, ChevronUp, Clock3, Command, Music2, Pause, Play, Settings, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import type { MediaAction, MediaSession, MediaSessionSummary } from "@/features/media/media-schema";
@@ -9,6 +9,7 @@ import { MotionButton } from "@/shared/motion/MotionButton";
 import { motionTokens } from "@/shared/motion/tokens";
 
 type DashboardViewProps = {
+  adaptiveActions?: ReactNode;
   session: MediaSession | null;
   sessions: MediaSessionSummary[];
   loading: boolean;
@@ -30,7 +31,7 @@ type DashboardViewProps = {
 
 export function DashboardView(props: DashboardViewProps) {
   const { session } = props;
-  return <>
+  return <div className="dashboard-view">
     <header className="expanded-header">
       <div className="source-label"><span className="source-dot" data-active={Boolean(session)} />{session && props.sessions.length > 1 ? <button className="source-session-button" title="Switch media player" onClick={() => { const index = props.sessions.findIndex((item) => item.sourceAppId === session.sourceAppId); props.onSelectSession(props.sessions[(index + 1) % props.sessions.length].sourceAppId); }}>{formatSourceName(session.sourceAppId)} · {props.sessions.length}</button> : session ? formatSourceName(session.sourceAppId) : "Hamin"}</div>
       <div className="header-actions">
@@ -62,5 +63,6 @@ export function DashboardView(props: DashboardViewProps) {
     ) : (
       <div className="idle-expanded"><div className="idle-clock-card"><Clock3 size={20} /><strong>{formatTime(props.now)}</strong></div><div className="idle-summary"><div className="idle-summary-row"><CalendarDays size={16} /><span>{formatDate(props.now)}</span></div>{props.power && <div className="idle-summary-row" data-low={props.power.low}><BatteryIcon percent={props.power.percent} charging={props.power.charging} /><span>{props.power.percent}%{props.power.charging ? " - Charging" : ""}</span></div>}<p>{props.loading ? "Connecting to Windows media..." : "No active media"}</p></div></div>
     )}
-  </>;
+    {props.adaptiveActions}
+  </div>;
 }

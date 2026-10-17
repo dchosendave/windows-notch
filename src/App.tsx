@@ -10,6 +10,7 @@ import { useArtworkAccent } from "@/features/media/use-artwork-accent";
 import { useLivePosition } from "@/features/media/use-live-position";
 import { CollapsedNotch } from "@/features/notch/components/CollapsedNotch";
 import { DashboardView } from "@/features/notch/components/DashboardView";
+import { AdaptiveActions } from "@/features/notch/components/AdaptiveActions";
 import { useNotchStore, type NotchMode, type NotchPhase } from "@/features/notch/notch-store";
 import { getMotionProfile } from "@/features/notch/motion-profile";
 import { COLLAPSED_SIZES, VIEW_SIZES } from "@/features/notch/notch-geometry";
@@ -35,10 +36,11 @@ import "./App.css";
 type ExpansionReason = "click" | "hover";
 const SettingsView = lazy(() => import("@/features/settings/components/SettingsView").then((module) => ({ default: module.SettingsView })));
 const CommandPalette = lazy(() => import("@/features/command/components/CommandPalette").then((module) => ({ default: module.CommandPalette })));
+const FileShelfView = lazy(() => import("@/features/command/components/FileShelfView").then((module) => ({ default: module.FileShelfView })));
 const CompanionView = lazy(() => import("@/features/companion/components/CompanionView").then((module) => ({ default: module.CompanionView })));
 const FocusTimerView = lazy(() => import("@/features/productivity/components/FocusTimerView").then((module) => ({ default: module.FocusTimerView })));
 const SystemControlsView = lazy(() => import("@/features/system/components/SystemControlsView").then((module) => ({ default: module.SystemControlsView })));
-const MODE_ORDER: Record<NotchMode, number> = { idle: 0, media: 0, companion: 1, productivity: 2, system: 3, command: 4, settings: 5 };
+const MODE_ORDER: Record<NotchMode, number> = { idle: 0, media: 0, companion: 1, productivity: 2, system: 3, command: 4, files: 4, settings: 5 };
 
 function clearTimer(timer: { current: number | undefined }) {
   if (timer.current !== undefined) {
@@ -88,8 +90,10 @@ function App() {
     const shouldAttach = reason === "click";
     const nextPhase: NotchPhase = reason === "click" ? "attached" : reason === "hover" ? "hover-preview" : "temporary";
     setPhase(nextPhase);
-    const floatingOffset = useSettingsStore.getState().settings.floatingOffset;
-    resizeNative(VIEW_SIZES[useNotchStore.getState().mode], shouldAttach ? 0 : floatingOffset);
+    const currentSettings = useSettingsStore.getState().settings;
+    const currentMode = useNotchStore.getState().mode;
+    const size = currentSettings.contextAwareness && (currentMode === "idle" || currentMode === "media") ? { width: 460, height: 296 } : VIEW_SIZES[currentMode];
+    resizeNative(size, shouldAttach ? 0 : currentSettings.floatingOffset);
   }, [resizeNative, setPhase]);
 
   const collapse = useCallback(() => {
@@ -111,9 +115,13 @@ function App() {
     expand("click");
   }, [expand, setMode]);
   const { settings, ready: settingsReady, error: settingsError, updateSetting } = useSettings(handleGlobalShortcut);
-  const handleFileDrop = useCallback((count: number) => announce(`${count} ${count === 1 ? "file" : "files"} on shelf`, 3_000, { category: "device", priority: "normal" }), [announce]);
+  const handleFileDrop = useCallback((count: number) => {
+    announce(`${count} ${count === 1 ? "item" : "items"} on shelf`, 3_000, { category: "device", priority: "normal" });
+    setMode("files");
+    expand("click");
+  }, [announce, expand, setMode]);
   const fileShelf = useFileShelf(handleFileDrop, settings.fileShelfPersistence);
-  const foreground = useForegroundContext(expanded && mode === "companion");
+  const foreground = useForegroundContext(settings.contextAwareness && expanded && mode === "companion");
   useEffect(() => {
     const categories = (Object.entries(settings.capsuleCategories) as Array<[CapsuleCategory, boolean]>).filter(([, enabled]) => enabled).map(([category]) => category);
     setEnabledCategories(categories);
@@ -144,7 +152,7 @@ function App() {
   const collapsedSize = COLLAPSED_SIZES[settings.density][hasCollapsedActivity ? "activity" : "minimal"];
   const attached = phase === "attached" || (phase === "interaction-locked" && resumePhase === "attached");
   const onboarding = settingsReady && !settings.onboardingComplete;
-  const expandedSize = onboarding ? { width: 460, height: 280 } : VIEW_SIZES[mode];
+  const expandedSize = onboarding ? { width: 460, height: 280 } : settings.contextAwareness && (mode === "idle" || mode === "media") ? { width: 460, height: 296 } : VIEW_SIZES[mode];
 
   useEffect(() => {
     if (expanded) {
@@ -243,6 +251,7 @@ function App() {
   const changeSetting = <Key extends keyof HaminSettings>(key: Key, value: HaminSettings[Key]) => void updateSetting(key, value);
 
   const commands: HaminCommand[] = [
+    { id: "files", label: "Drop & act", description: "Preview held files and copy text or paths", icon: "clipboard", run: () => openView("files") },
     { id: "audio", label: "System audio", description: "Volume, mute, and device settings", icon: "volume", run: openSystem },
     { id: "timer", label: "Start focus timer", description: "Begin a 25-minute focus session", icon: "timer", run: () => { startTimer(25); collapse(); } },
     { id: "clipboard", label: "Capture clipboard", description: "Save the current clipboard text", icon: "clipboard", run: () => void captureClipboard() },
@@ -362,12 +371,13 @@ function App() {
               <motion.div key="expanded" className="expanded-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: motionProfile.contentDuration }}>
                 {onboarding ? <OnboardingView onFinish={() => void updateSetting("onboardingComplete", true)} /> : <AnimatePresence initial={false} mode="popLayout" custom={viewDirection}>
                   <motion.div key={mode} custom={viewDirection} variants={viewVariants} initial="enter" animate="center" exit="exit" className="view-motion-shell" transition={{ duration: motionProfile.contentDuration }}>
+                {mode === "files" && <Suspense fallback={<div className="view-loading">Loading files…</div>}><FileShelfView files={fileShelf.files} onBack={closeUtilityView} onRemove={fileShelf.remove} onClear={fileShelf.clear} /></Suspense>}
                 {mode === "settings" && <Suspense fallback={<div className="view-loading">Loading settings…</div>}><SettingsView settings={settings} ready={settingsReady} error={settingsError} monitors={monitors} onBack={closeUtilityView} onCollapse={collapse} onChange={changeSetting} /></Suspense>}
                 {mode === "command" && <Suspense fallback={<div className="view-loading">Loading commands…</div>}><CommandPalette commands={commands} note={settings.quickNote} clipboardHistory={settings.clipboardHistoryEnabled ? settings.clipboardHistory : []} shelfFiles={fileShelf.files} onClearShelf={fileShelf.clear} onRemoveFile={fileShelf.remove} onOpenFile={(path) => void nativeClient.launchCustomTarget(path).catch((error) => announce(String(error)))} onRevealFile={(path) => void nativeClient.revealFile(path).catch((error) => announce(String(error)))} onCopyFile={(path) => void navigator.clipboard.writeText(path).then(() => announce("Path copied"))} onBack={closeUtilityView} onNoteChange={(note) => changeSetting("quickNote", note)} onPasteCapture={() => void captureClipboard()} onCopyHistory={(value) => void copyHistory(value)} /></Suspense>}
                 {mode === "companion" && <Suspense fallback={<div className="view-loading">Loading companion…</div>}><CompanionView context={foreground.context} history={settings.notificationInbox ? history : []} metrics={metrics} onBack={closeUtilityView} onCollapse={collapse} onRefreshContext={() => void foreground.refresh()} onRefreshMetrics={refreshMetrics} onDismiss={dismissHistory} onClear={clearHistory} onOpenPrivacy={() => void launchQuickAction("microphonePrivacy")} onOpenCalendar={() => void launchQuickAction("calendar")} /></Suspense>}
                 {mode === "system" && <Suspense fallback={<div className="view-loading">Loading audio…</div>}><SystemControlsView volume={audio.state.volume} muted={audio.state.muted} deviceName={audio.state.deviceName} deviceCount={audio.state.deviceCount} loading={audio.loading} error={audio.error} onBack={closeUtilityView} onRefresh={() => void audio.refresh()} onToggleMute={() => void toggleMute()} onVolumeChange={(volume) => void changeVolume(volume)} onLaunch={(action) => void launchQuickAction(action)} /></Suspense>}
                 {mode === "productivity" && <Suspense fallback={<div className="view-loading">Loading timer…</div>}><FocusTimerView now={now} timerEndsAt={focusTimer.endsAt} timerActive={focusTimer.active} paused={focusTimer.paused} remaining={focusTimer.remaining} duration={focusTimer.duration} presets={settings.focusPresets} completedThisWeek={focusTimer.completedThisWeek} onBack={closeUtilityView} onCollapse={collapse} onStart={startTimer} onStop={stopTimer} onPause={focusTimer.pause} onResume={focusTimer.resume} /></Suspense>}
-                {(mode === "idle" || mode === "media") && <DashboardView session={media.session} sessions={media.sessions} loading={media.loading} power={power} now={now} displayedPosition={displayedPosition} timelineStyle={timelineStyle} onSeekPreview={setSeekPreview} onCommitSeek={(value) => void commitSeek(value)} onControl={(action) => void media.control(action)} onSelectSession={(sourceAppId) => void media.selectSession(sourceAppId)} onOpenCompanion={openCompanion} onOpenProductivity={() => openView("productivity")} onOpenSystem={openSystem} onOpenSettings={openSettings} onOpenCommand={openCommand} onCollapse={collapse} />}
+                {(mode === "idle" || mode === "media") && <DashboardView adaptiveActions={settings.contextAwareness && <AdaptiveActions commands={commands.map((command) => command.id === "timer" ? { ...command, label: "Focus timer", description: "Start or manage a focus session", run: () => openView("productivity") } : command)} pinned={settings.pinnedContext} onPin={(value) => changeSetting("pinnedContext", value)} />} session={media.session} sessions={media.sessions} loading={media.loading} power={power} now={now} displayedPosition={displayedPosition} timelineStyle={timelineStyle} onSeekPreview={setSeekPreview} onCommitSeek={(value) => void commitSeek(value)} onControl={(action) => void media.control(action)} onSelectSession={(sourceAppId) => void media.selectSession(sourceAppId)} onOpenCompanion={openCompanion} onOpenProductivity={() => openView("productivity")} onOpenSystem={openSystem} onOpenSettings={openSettings} onOpenCommand={openCommand} onCollapse={collapse} />}
                   </motion.div>
                 </AnimatePresence>}
               </motion.div>

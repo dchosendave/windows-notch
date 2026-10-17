@@ -122,6 +122,23 @@ Use a noncritical test environment first.
 - Restart Explorer and confirm watchdog behavior.
 - Relaunch Hamin after an interrupted run and confirm stale-state recovery.
 
+### Drop & act and context commands
+
+- Run `npm test` with Node 22.18+ for context commands and settings checks (also included in `npm run verify`).
+- Drop a PNG and a UTF-8 text file on the collapsed notch; confirm Drop & act opens.
+- Select each file and verify its preview; copy text, one path, and all paths.
+- Drop eight files; verify every item is reachable and duplicates appear only once.
+- Try a missing file, folder, unsupported file, image over 5 MB, and text over 64 KB.
+- Remove and clear items; confirm original files remain on disk.
+- Verify Open and Reveal require clicks, and Escape closes the view.
+- Open the command palette over an editor, browser, and Explorer; verify relevant commands lead.
+- Disable App context and verify the original command order returns.
+- Expand the main dashboard over an editor, browser, Explorer, and communication app; verify the context actions match.
+- Pin a layout, switch apps, collapse/reopen, and restart; verify the layout stays pinned. Unpin to follow the active app again.
+- Disable App context; verify the dashboard returns to its original height with media controls intact.
+- With an active focus session, use the adaptive Focus timer action; verify it opens the timer without restarting it.
+- Use Tab/Enter and reduced motion to check both views.
+
 ## Performance observations
 
 Use Companion Hub diagnostics and Task Manager to watch:
@@ -133,4 +150,3 @@ Use Companion Hub diagnostics and Task Manager to watch:
 - Resource recovery after closing expanded views
 
 High-refresh-rate testing should include 60Hz, 120Hz, 144Hz, and 180Hz where available.
-

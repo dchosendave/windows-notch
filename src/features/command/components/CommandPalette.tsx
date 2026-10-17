@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, AppWindow, ChevronLeft, Clipboard, Copy, ExternalLink, File, FileText, Search, Timer, Trash2, Volume2, X } from "lucide-react";
+import { contextualCommands } from "../context-commands";
+import { useForegroundContext } from "@/features/companion/use-foreground-context";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 export type HaminCommand = {
   id: string;
@@ -33,12 +36,15 @@ export function CommandPalette({ commands, note, clipboardHistory, shelfFiles, o
   onCopyHistory: (value: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const contextEnabled = useSettingsStore((state) => state.settings.contextAwareness);
+  const { context } = useForegroundContext(contextEnabled);
   const [activeIndex, setActiveIndex] = useState(0);
   const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [noteDraft, setNoteDraft] = useState(note);
   useEffect(() => setNoteDraft(note), [note]);
-  const filtered = useMemo(() => commands.filter((command) => `${command.label} ${command.description}`.toLowerCase().includes(query.toLowerCase())), [commands, query]);
-  useEffect(() => setActiveIndex(0), [query]);
+  const category = contextEnabled ? context?.category : undefined;
+  const filtered = useMemo(() => contextualCommands(commands, category).filter((command) => `${command.label} ${command.description}`.toLowerCase().includes(query.toLowerCase())), [commands, query, category]);
+  useEffect(() => setActiveIndex(0), [query, category]);
   useEffect(() => resultRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" }), [activeIndex]);
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -60,6 +66,7 @@ export function CommandPalette({ commands, note, clipboardHistory, shelfFiles, o
     </header>
     <div className="command-body scroll-fade">
       <div id="hamin-command-results" className="command-results" role="listbox" aria-label="Available commands">
+        {contextEnabled && context && !query && <small className="command-context">Suggested for {context.processName}</small>}
         {filtered.map((command, index) => { const Icon = icons[command.icon]; return <button id={`command-${command.id}`} ref={(element) => { resultRefs.current[index] = element; }} key={command.id} role="option" aria-selected={index === activeIndex} data-active={index === activeIndex} onMouseEnter={() => setActiveIndex(index)} onClick={command.run}><Icon size={16} /><span><strong>{command.label}</strong><small>{command.description}</small></span></button>; })}
         {!filtered.length && <p className="command-empty">No matching command</p>}
       </div>

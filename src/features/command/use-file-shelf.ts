@@ -23,10 +23,10 @@ export function useFileShelf(onDrop: (count: number) => void, persistent = false
       if (event.payload.type === "leave") { setDragging(false); return; }
       if (event.payload.type !== "drop") return;
       setDragging(false);
-      const parsed = fileShelfSchema.safeParse(event.payload.paths.slice(0, 8));
+      const parsed = fileShelfSchema.safeParse([...new Set(event.payload.paths)].slice(0, 8));
       const paths = parsed.success ? parsed.data : [];
       setFiles(paths);
-      onDrop(paths.length);
+      if (paths.length) onDrop(paths.length);
     }).then((stop) => {
       if (disposed) stop();
       else unlisten = stop;

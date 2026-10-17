@@ -6,6 +6,7 @@ export const settingsSchema = z.object({
   activeProfile: z.enum(["custom", "work", "gaming", "minimal", "presentation"]).default("custom"),
   onboardingComplete: z.boolean().default(false),
   contextAwareness: z.boolean().default(true),
+  pinnedContext: z.enum(["development", "browser", "files", "meeting", "media", "application"]).nullable().default(null),
   notificationInbox: z.boolean().default(true),
   privacyIndicators: z.boolean().default(true),
   followActiveMonitor: z.boolean().default(false),

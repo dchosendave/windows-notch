@@ -408,7 +408,7 @@ button {
   display: grid;
   inset: 6px;
   place-items: center;
-  content: "Drop to hold";
+  content: "Drop & act";
   color: rgba(255, 255, 255, 0.9);
   background: rgba(var(--accent-rgb), 0.14);
   border: 1px dashed rgba(var(--accent-rgb), 0.7);
@@ -1721,6 +1721,31 @@ button {
   flex-direction: column;
 }
 
+.shelf-view { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 10px; }
+.shelf-workbench { display: grid; grid-template-columns: 155px minmax(0, 1fr); gap: 12px; flex: 1; min-height: 0; }
+.shelf-items { overflow-y: auto; min-height: 0; }
+.shelf-items > div { display: flex; border-radius: 8px; margin-bottom: 4px; }
+.shelf-items > div[data-selected="true"] { background: rgba(var(--accent-rgb), .16); }
+.shelf-view button { cursor: pointer; }
+.shelf-items button { display: flex; align-items: center; gap: 6px; padding: 9px 5px; border: 0; background: transparent; color: rgba(255,255,255,.8); min-width: 0; }
+.shelf-items button:first-child { flex: 1; text-align: left; }
+.shelf-items svg { flex-shrink: 0; }
+.shelf-items span, .shelf-detail > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
+.shelf-detail { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; }
+.shelf-detail > small, .shelf-footer, .shelf-empty { color: rgba(255,255,255,.6); font-size: var(--text-2xs); }
+.shelf-preview { display: grid; flex: 1; min-height: 0; overflow: auto; border-radius: 9px; background: rgba(255,255,255,.04); }
+.shelf-preview img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.shelf-preview pre { margin: 0; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; user-select: text; }
+.shelf-preview p { align-self: center; padding: 10px; color: rgba(255,255,255,.6); font-size: var(--text-xs); }
+.shelf-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.shelf-actions button, .shelf-footer button { display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: rgba(255,255,255,.05); color: rgba(255,255,255,.85); font-size: var(--text-2xs); }
+.shelf-view button:hover { background: rgba(var(--accent-rgb), .18); }
+.shelf-view button:focus-visible { outline: 2px solid rgb(var(--accent-rgb)); outline-offset: -2px; }
+.shelf-footer { display: flex; align-items: center; gap: 10px; }
+.shelf-footer span { flex: 1; }
+.shelf-footer button { flex-shrink: 0; }
+.shelf-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+
 .command-header {
   display: grid;
   grid-template-columns: 28px 1fr;
@@ -1803,6 +1828,17 @@ button {
 .command-results strong { font-size: var(--text-sm); }
 .command-results small { color: rgba(255, 255, 255, 0.38); font-size: var(--text-2xs); }
 .command-empty { color: rgba(255, 255, 255, 0.4); font-size: var(--text-xs); text-align: center; }
+.command-context { padding: 2px 8px; color: rgb(var(--accent-rgb)); font-size: var(--text-2xs); }
+.dashboard-view { display: flex; flex-direction: column; }
+.adaptive-actions { flex-shrink: 0; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.09); }
+.adaptive-actions header { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-xs); }
+.adaptive-actions header small { margin-left: 8px; color: rgba(255,255,255,.5); }
+.adaptive-actions > div { display: flex; gap: 8px; margin-top: 4px; }
+.adaptive-actions > div > button { flex: 1; min-width: 0; padding: 7px 9px; text-align: left; color: rgba(255,255,255,.9); background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .16); border-radius: 8px; cursor: pointer; }
+.adaptive-actions strong, .adaptive-actions > div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
+.adaptive-actions > div small { margin-top: 3px; color: rgba(255,255,255,.55); font-size: var(--text-2xs); }
+.adaptive-actions button:focus-visible { outline: 2px solid rgb(var(--accent-rgb)); outline-offset: -2px; }
+.adaptive-actions > div > button:hover { background: rgba(var(--accent-rgb), .16); }
 
 .quick-note,
 .clipboard-panel {

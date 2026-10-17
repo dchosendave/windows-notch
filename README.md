@@ -13,6 +13,9 @@ Complete product, usage, architecture, privacy, testing, and development documen
 - Quick launch for Explorer, Search, Settings, Task Manager, and Calculator
 - Multi-monitor positioning and DPI-aware offsets
 - Command palette with application actions, clipboard snippets, quick notes, and process diagnostics
+- Drop & act: local image/text previews, copy text or paths, and Open/Reveal for up to eight dropped items
+- App-aware command ordering for editors, browsers, Explorer, media, and communication apps
+- Adaptive dashboard actions with persistent layout pinning; disable App context to restore the compact dashboard
 - Modular collapsed layouts, album-art accents, density, glass/solid/OLED surfaces, opacity, corners, and floating offset
 - Settings import/export and configurable global shortcuts
 - Launch at login and a global command shortcut
